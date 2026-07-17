@@ -220,7 +220,15 @@ function makePlatform(x: number, y: number, w: number, rnd: () => number): Platf
     });
   }
 
-  return { x, y, w, h: 220, trees, bushes, extras };
+  const rocky = rnd() < 0.35;
+  const bumps = rocky
+    ? Array.from({ length: 3 + Math.floor(rnd() * 4) }, () => ({
+        x: rnd() * w,
+        h: 4 + rnd() * 9,
+      }))
+    : undefined;
+
+  return { x, y, w, h: 220, trees, bushes, extras, rocky, bumps };
 }
 
 /* ----- Fishes ----- */
