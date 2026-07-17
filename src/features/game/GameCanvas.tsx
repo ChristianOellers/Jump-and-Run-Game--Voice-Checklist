@@ -536,7 +536,12 @@ export function GameCanvas() {
     player.lastStepX = player.x;
 
     let cam = { x: 0 };
-    const sunHomeX = WORLD_W * (0.35 + Math.random() * 0.3);
+    // Sun sits on one of two off-center bands (left or right), never above the
+    // shrine so players can deposit seeds without triggering ray drain.
+    const sunHomeX =
+      Math.random() < 0.5
+        ? WORLD_W * (0.15 + Math.random() * 0.17) // left band 15..32%
+        : WORLD_W * (0.68 + Math.random() * 0.17); // right band 68..85%
     const sunHomeY = 90;
     const SUN_LEASH = 260;
     const SUN_TRIGGER = 520;
