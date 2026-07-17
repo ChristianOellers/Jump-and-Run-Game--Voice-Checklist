@@ -22,7 +22,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -185,17 +184,23 @@ export function ChecklistPanel() {
   };
 
   return (
-    <Card>
+    <Card className="border-border/70 shadow-none">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-lg">Checklist</CardTitle>
-          <span className="text-xs text-muted-foreground">
-            {doneCount} / {sorted.length} done
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+          <CardTitle className="font-serif text-xl font-medium">Checklist</CardTitle>
+          <span className="shrink-0 text-xs uppercase tracking-[0.15em] text-muted-foreground">
+            {doneCount} / {sorted.length} · {pct}%
           </span>
         </div>
-        <Progress value={pct} aria-label={`${pct}% complete`} className="mt-2" />
+        <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full bg-primary transition-[width] duration-500"
+            style={{ width: `${pct}%` }}
+            aria-label={`${pct}% complete`}
+          />
+        </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         <form
           className="flex gap-2"
           onSubmit={(e) => {
@@ -208,20 +213,21 @@ export function ChecklistPanel() {
             onChange={(e) => setNewTitle(e.target.value)}
             placeholder="Add a checklist item…"
             aria-label="New item title"
+            className="rounded-full"
           />
-          <Button type="submit" aria-label="Add item">
+          <Button type="submit" aria-label="Add item" className="rounded-full">
             <Plus className="h-4 w-4" />
           </Button>
         </form>
 
         {sorted.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            No items yet. Add your first checklist item above.
+          <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+            Nothing here yet. Add your first item above.
           </p>
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <SortableContext items={sorted.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-              <ul className="space-y-2">
+              <ul className="space-y-1.5">
                 {sorted.map((item) =>
                   editingId === item.id ? (
                     <li key={item.id}>

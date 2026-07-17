@@ -1,100 +1,103 @@
-# Voice Checklist App — Build Plan
 
-A single-page checklist app where users speak progress updates. Speech is transcribed (Web Speech API), sent to an LLM (via a server function using Lovable AI), and returns suggested checklist state changes for user review.
+## Context
 
-## Stack
+Impeccable (impeccable.style) is a set of design commands for coding agents (`init`, `shape`, `craft`, `adapt`, `audit`) — not an npm package. It has no runtime to install. What we can do is run its **loop** manually against this repo: write a short brief, scan the current UI, then apply one focused redesign pass with its principles (clear hierarchy, honest contrast, restraint, no hype, no purple-gradient/glassmorphism defaults).
 
-- TanStack Start (existing template) + React 19 + TypeScript + Tailwind v4
-- shadcn/ui components (already available)
-- `@dnd-kit/core` + `@dnd-kit/sortable` for drag & drop
-- Web Speech API (browser) for STT with manual text fallback
-- Lovable AI Gateway (`openai/gpt-5.5`) via `createServerFn` for LLM
-- `localStorage` for persistence (behind a storage abstraction)
-- Zustand for lightweight state (checklist, suggestions, activity, settings)
+Locked from your answers:
+- **Voice:** warm, human, everyday
+- **Scope:** full visual pass + hero/landing framing
 
-## Architecture
+## PRODUCT.md (brief we'll design against)
+
+- **Product:** Voice Checklist — speak progress, review AI suggestions, apply with confirmation.
+- **Users:** Individuals tracking personal/work progress hands-free. Not a dashboard, not a marketing site.
+- **Voice:** Warm, human, everyday. Plain language, no jargon, no hype.
+- **Anti-references:** Purple/indigo gradients on white, generic SaaS hero, glassmorphism, neon accents, Inter-on-everything.
+
+## DESIGN.md (what today's UI does)
+
+- Slate shadcn defaults (cool grays, near-black primary), Inter-ish system stack.
+- Thin header + immediate 2-column workspace on desktop, 4-tab layout on mobile.
+- Panels are uniform shadcn Cards; no hierarchy between the primary action (Voice) and secondary panels.
+- No landing framing — user lands directly in the tool with no orientation.
+
+## Redesign direction
+
+Warm editorial-utility: cream paper background, ink foreground, one warm terracotta accent, a serif display for headings paired with a humanist sans for UI. Generous spacing rhythm, quiet borders, no shadows-as-decoration.
+
+### 1. Design tokens (src/styles.css)
+
+Replace the slate palette with warm neutrals + a single accent. All values in `oklch`, both `:root` and `.dark`.
+
+- `--background`: warm cream (light) / deep ink (dark)
+- `--foreground`: near-black ink / warm off-white
+- `--card`: paper white / raised ink
+- `--muted` / `--muted-foreground`: warm sand tones
+- `--primary`: terracotta (single accent, used sparingly for CTAs + recording state)
+- `--border`: hairline warm gray
+- Add `--font-serif` (display) and `--font-sans` (body) tokens; load via `<link>` in `src/routes/__root.tsx` (Fraunces + Inter, or Instrument Serif + Work Sans — pick one pairing in build).
+- Radius drops to `0.5rem` for a calmer feel.
+
+### 2. Hero / landing framing (src/routes/index.tsx)
+
+Add a hero band above the workspace:
 
 ```text
-src/
-  routes/
-    index.tsx                  // main app shell (replaces placeholder)
-  features/
-    checklist/
-      ChecklistPanel.tsx
-      ChecklistItem.tsx
-      SortableList.tsx
-      useChecklistStore.ts
-    voice/
-      VoiceCapture.tsx
-      useSpeechRecognition.ts  // Web Speech API + fallback state
-    suggestions/
-      SuggestionsPanel.tsx
-      useSuggestionsStore.ts
-    activity/
-      ActivityPanel.tsx
-      useActivityStore.ts
-    settings/
-      SettingsPanel.tsx
-      useSettingsStore.ts
-  services/
-    speech.ts                  // SpeechService interface + Web Speech impl
-    llm.ts                     // LLMService: mock | server (calls server fn)
-    suggestionEngine.ts        // transcript + items -> Suggestion[]
-  lib/
-    ai.functions.ts            // createServerFn: analyzeTranscript
-    storage.ts                 // typed localStorage adapter (swap-ready)
-  types/
-    checklist.ts, suggestion.ts, activity.ts, settings.ts
+┌────────────────────────────────────────────────────┐
+│  small eyebrow: "voice checklist"                  │
+│  H1 (serif, large): "Talk it through. Tick it off."│
+│  Lede (sans, muted): one-sentence value prop       │
+│  Row: [Start speaking] primary  ·  How it works    │
+└────────────────────────────────────────────────────┘
+        ↓ workspace begins here
 ```
 
-Data flow: `VoiceCapture` -> `speech.ts` -> transcript -> `suggestionEngine` -> `llm.ts` -> server fn (real) or local mock -> normalized `Suggestion[]` -> `SuggestionsPanel` -> user confirms -> mutations on checklist store + activity log entry (with undo snapshot).
+- H1 uses the serif token; body copy uses sans.
+- "Start speaking" scrolls to / focuses the Voice panel.
+- Hero collapses to a compact single-line header on scroll (CSS only, no JS lib).
 
-## Data Model
+### 3. Workspace layout
 
-```ts
-ChecklistItem { id, title, description, done, doneAt?, confidence?, source: 'user'|'llm', order }
-Suggestion   { itemId, status: 'completed'|'partial'|'not_mentioned', confidence, reasoning }
-ActivityEntry{ id, timestamp, transcript, suggestions, appliedActions, snapshotBefore }
-Settings     { language, theme, autoApply, apiMode: 'mock'|'real', voiceEnabled }
-```
+- Desktop grid rebalanced: left column = **Voice + Suggestions** (the active loop), right column = **Checklist** (the artifact). Activity + Settings move into a subtle bottom strip / disclosure — they're reference, not primary.
+- Mobile tabs relabeled with warmer copy: "Speak / List / History / Setup".
+- Section headings use serif; panel chrome loses redundant CardTitle repetition where the section heading already labels it.
 
-## LLM Layer
+### 4. Component polish (visual only, no logic changes)
 
-- Server function `analyzeTranscript({ transcript, items })` calls Lovable AI Gateway with a strict JSON schema (via `Output.object`) returning `{ suggestions: [{ itemId, status, confidence, reasoning }] }`.
-- Mock mode: keyword + fuzzy match locally, returns same shape.
-- `apiMode` in Settings toggles between them. Secrets never leave the server function.
+- **ChecklistPanel:** progress bar becomes a slim inline meter next to the count; row hover raises contrast instead of adding a shadow; drag handle only appears on hover/focus; done items get warm strike-through + reduced opacity.
+- **VoiceCapture:** big round mic button as the anchor, terracotta when recording with a gentle pulse (CSS `@keyframes`), transcript in serif italic for a "spoken" feel.
+- **SuggestionsPanel:** each suggestion becomes a card with status chip (Done / Partial / Not mentioned) in restrained color, confidence as a short bar not a percentage.
+- **ActivityPanel:** timeline-style list with hairline rule + timestamp in mono-ish sans.
+- **SettingsPanel:** grouped rows with labels-left / control-right, no card-in-card.
 
-## Suggestion Review Rules
+### 5. Typography & rhythm
 
-- Show transcript + per-item reasoning and confidence.
-- Confirmation required unless `autoApply` is on AND confidence ≥ 0.8.
-- Never delete items. Every apply saves a `snapshotBefore` for one-step Undo.
-- "Undo last auto-apply" button restores snapshot and logs the reversal.
+- Type scale: 12 / 14 / 16 / 20 / 28 / 40 (hero only).
+- Line-height: 1.5 body, 1.15 display.
+- 4pt spacing base; sections use 48–64px vertical rhythm; panels use 24px internal padding.
+- One accent color only. No gradients. No decorative icons in headings.
 
-## UI Layout (mobile-first)
+## Files touched
 
-Single page, responsive grid: Checklist (primary) | right column stacks Voice Capture, Suggestions, Activity, Settings (tabs on mobile). Progress bar with % complete + counts. Loading/empty/error states for each panel. Keyboard accessible, semantic landmarks, focus rings, `aria-live` for transcript and suggestions.
+- `src/styles.css` — token overhaul, font family tokens, radius.
+- `src/routes/__root.tsx` — `<link>` tags for the chosen font pair.
+- `src/routes/index.tsx` — hero band, layout rebalance, tab copy.
+- `src/features/checklist/ChecklistPanel.tsx` — progress + row visual pass.
+- `src/features/voice/VoiceCapture.tsx` — mic-first layout, recording pulse.
+- `src/features/suggestions/SuggestionsPanel.tsx` — status chips, confidence bar.
+- `src/features/activity/ActivityPanel.tsx` — timeline styling.
+- `src/features/settings/SettingsPanel.tsx` — row layout.
 
-## Error Handling
+No new dependencies. No changes to stores, server function, speech service, or suggestion engine — logic is locked.
 
-- Mic denied / unsupported → fallback textarea + clear message.
-- Empty transcript → inline warning, no LLM call.
-- LLM failure / malformed JSON → toast + keep transcript editable + retry button.
-- Storage failure → in-memory fallback + toast.
+## Out of scope
 
-## Implementation Steps
+- Impeccable CLI install (not possible; not a runtime library).
+- Dark-mode toggle wiring changes (tokens updated for both, existing toggle keeps working).
+- Copywriting rewrites beyond hero + tab labels.
 
-1. Add deps: `@dnd-kit/core`, `@dnd-kit/sortable`, `zustand`.
-2. Create `types/`, `lib/storage.ts`, stores (checklist, suggestions, activity, settings) with localStorage hydration.
-3. Build `services/speech.ts` + `useSpeechRecognition` hook (Web Speech + fallback).
-4. Build mock suggestion engine in `services/suggestionEngine.ts` + `services/llm.ts`.
-5. Add `src/lib/ai.functions.ts` server function using Lovable AI Gateway with strict JSON output.
-6. Build UI: `ChecklistPanel` (CRUD + dnd-kit reorder + manual toggle), `VoiceCapture`, `SuggestionsPanel` (review/apply/reject + auto-apply rule), `ActivityPanel` (with Undo), `SettingsPanel`.
-7. Replace `src/routes/index.tsx` placeholder with app shell + real head metadata (title/description/og/twitter).
-8. Verify: typecheck passes, manual smoke via preview (mock mode default so it works with no key), toggle real mode to hit server fn.
+## Validation
 
-## Out of Scope
-
-- Auth / multi-user / backend DB (storage layer is swap-ready).
-- Real-time collaboration.
-- i18n beyond passing `language` to STT + LLM prompt.
+- Typecheck clean.
+- Preview screenshot at mobile + desktop widths; verify hero, workspace, and each panel.
+- Confirm no hardcoded color utilities were introduced (all colors via tokens).
