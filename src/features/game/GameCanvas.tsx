@@ -935,16 +935,15 @@ export function GameCanvas() {
       ctx.fillStyle = C.hillMid;
       drawHills(ctx, W, H, cam.x * 0.45, 40, GROUND_Y, level.mountainStyle);
 
-      // Birds — behind gameplay layer, above the mountains. Follow fish-style drift.
+      // Birds — pure screen-space sky layer (exempt from parallax).
       ctx.fillStyle = "rgba(40, 40, 55, 0.55)";
       for (const b of birds) {
         b.x += b.vx * dt;
-        if (b.x > WORLD_W + 40) b.x = -40;
-        if (b.x < -40) b.x = WORLD_W + 40;
+        if (b.x > W + 40) b.x = -40;
+        if (b.x < -40) b.x = W + 40;
         b.phase += dt * b.sineFreq;
-        const bx = b.x - cam.x * 0.55;
+        const bx = b.x;
         const by = b.y + Math.sin(b.phase) * b.sineAmp;
-        if (bx < -20 || bx > W + 20) continue;
         const flap = Math.sin(b.phase * 4) * 0.35 + 0.7;
         const s = b.size;
         ctx.beginPath();
