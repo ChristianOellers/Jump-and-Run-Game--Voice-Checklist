@@ -705,7 +705,7 @@ export function GameCanvas() {
       ctx.fillRect(0, 0, W, H);
 
       // Sun — multi-stop radial shader + soft god-ray halo (scheme colored)
-      const sunScreenX = sun.x - cam.x * 0.1;
+      const sunScreenX = sun.x - cam.x;
       const sunScreenY = sun.y;
       const halo = ctx.createRadialGradient(
         sunScreenX,
