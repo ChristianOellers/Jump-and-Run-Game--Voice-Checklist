@@ -107,9 +107,13 @@ function generateLevel(seed: number): { platforms: Platform[]; zones: Zone[] } {
   let x = platforms[0].x + platforms[0].w;
   let y = GROUND_Y;
 
+  // Reachability budget: JUMP_V=-640, GRAVITY=1800 → apex ~113px, airtime ~0.71s,
+  // horizontal reach ~200px at MOVE_MAX=280. Keep gaps/rises inside a safe margin.
   while (x < WORLD_W - 260) {
-    const gap = 70 + rnd() * 90;
-    const dy = (rnd() - 0.5) * 140;
+    const gap = 45 + rnd() * 85; // 45..130
+    const rise = rnd() * 75; // up to 75 up
+    const fall = rnd() * 110; // up to 110 down
+    const dy = rnd() < 0.5 ? -rise : fall;
     y = Math.max(300, Math.min(560, y + dy));
     const w = 90 + rnd() * 100;
     platforms.push(makePlatform(x + gap, y, w, rnd));
