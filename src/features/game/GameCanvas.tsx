@@ -937,12 +937,10 @@ export function GameCanvas() {
         ctx.fill();
       }
 
-      // ----- Foreground light shader: warm/cool tint from sun intensity -----
+      // ----- Foreground light shader: scheme tint × sun intensity -----
       ctx.globalCompositeOperation = "multiply";
-      const tintR = 255;
-      const tintG = 240 + (sun.intensity - 0.75) * 40;
-      const tintB = 220 + (sun.intensity - 0.75) * -60;
-      ctx.fillStyle = `rgba(${tintR | 0},${tintG | 0},${tintB | 0},0.14)`;
+      const intMod = 0.6 + sun.intensity * 0.5;
+      ctx.fillStyle = `rgba(${scheme.tintR},${scheme.tintG},${scheme.tintB},${scheme.tintAlpha * intMod})`;
       ctx.fillRect(0, 0, W, H);
       ctx.globalCompositeOperation = "source-over";
 
