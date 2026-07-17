@@ -633,11 +633,12 @@ export function GameCanvas() {
       tintPhase += dt * 0.05;
       sun.intensity = 0.75 + Math.sin(tintPhase) * 0.25;
 
-      // Sun rays: when player is within reach of the sun, drain 1 seed/sec.
+      // Sun rays: reach is a soft horizontal band below the sun (falls off at edges).
+      // Directly below the sun always hits; horizontal falloff up to SUN_RAY_RADIUS.
       const sunDx = player.x - sun.x;
-      const sunDy = player.y - sun.y;
-      const sunDist = Math.hypot(sunDx, sunDy);
-      const inSunReach = sunDist < SUN_RAY_RADIUS;
+      const sunDist = Math.abs(sunDx);
+      const inSunReach = sunDist < SUN_RAY_RADIUS && player.y > sun.y + 40;
+      const rayStrength = inSunReach ? Math.max(0, 1 - sunDist / SUN_RAY_RADIUS) : 0;
       if (inSunReach) {
         sun.drainAcc += dt;
         if (sun.drainAcc >= 1) {
