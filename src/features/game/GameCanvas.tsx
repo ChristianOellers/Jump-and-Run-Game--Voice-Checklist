@@ -127,6 +127,8 @@ function generateLevel(seed: number): { platforms: Platform[]; zones: Zone[] } {
     y: GROUND_Y - 10,
     trees: [],
     bushes: [],
+    extras: [],
+    isShrine: true,
   };
 
   const first = platforms[0];
