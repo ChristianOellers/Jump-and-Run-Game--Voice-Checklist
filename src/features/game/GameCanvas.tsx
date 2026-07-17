@@ -1008,7 +1008,13 @@ function drawHills(
   ctx.closePath();
   ctx.fill();
 }
-function drawTree(ctx: CanvasRenderingContext2D, x: number, groundY: number, t: Tree) {
+function drawTree(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  groundY: number,
+  t: Tree,
+  canopyOffset = 0,
+) {
   const palette = LEAF_PALETTES[Math.floor(t.hue * LEAF_PALETTES.length) % LEAF_PALETTES.length];
   const trunkH = t.size * 1.2;
   if (t.kind === "birch") {
@@ -1022,6 +1028,8 @@ function drawTree(ctx: CanvasRenderingContext2D, x: number, groundY: number, t: 
     ctx.fillStyle = C.treeTrunk;
     ctx.fillRect(x - 3, groundY - trunkH, 6, trunkH);
   }
+  // Canopy sways: shift x by canopyOffset only for the leaves
+  x += canopyOffset;
 
   if (t.kind === "pine") {
     // stacked triangles
