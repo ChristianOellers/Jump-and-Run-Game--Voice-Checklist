@@ -158,7 +158,55 @@ function makePlatform(x: number, y: number, w: number, rnd: () => number): Platf
     size: 6 + rnd() * 8,
     hue: rnd(),
   }));
-  return { x, y, w, h: 220, trees, bushes };
+
+  // Pre-generate a lush "greening" layer that reveals as the shrine tree matures.
+  // Each entry has a threshold in 0..1; drawn only when greenness >= threshold.
+  const extras: Extra[] = [];
+  const grassCount = 8 + Math.floor(rnd() * 10);
+  for (let i = 0; i < grassCount; i++) {
+    extras.push({
+      kind: "grass",
+      x: 4 + rnd() * (w - 8),
+      size: 3 + rnd() * 4,
+      hue: rnd(),
+      threshold: 0.05 + rnd() * 0.4,
+    });
+  }
+  const extraBushCount = 1 + Math.floor(rnd() * 3);
+  for (let i = 0; i < extraBushCount; i++) {
+    extras.push({
+      kind: "bush",
+      x: 8 + rnd() * (w - 16),
+      size: 6 + rnd() * 10,
+      hue: rnd(),
+      threshold: 0.2 + rnd() * 0.4,
+    });
+  }
+  const mushroomCount = Math.floor(rnd() * 3);
+  const caps = ["#c04a3a", "#d98a3a", "#8a6fb0", "#efe0a8"];
+  for (let i = 0; i < mushroomCount; i++) {
+    extras.push({
+      kind: "mushroom",
+      x: 10 + rnd() * (w - 20),
+      size: 3 + rnd() * 3,
+      hue: rnd(),
+      threshold: 0.35 + rnd() * 0.35,
+      mushroomCap: caps[Math.floor(rnd() * caps.length)],
+    });
+  }
+  const extraTreeCount = 1 + Math.floor(rnd() * 3);
+  for (let i = 0; i < extraTreeCount; i++) {
+    extras.push({
+      kind: "tree",
+      x: 10 + rnd() * (w - 20),
+      size: 18 + rnd() * 22,
+      hue: rnd(),
+      threshold: 0.55 + rnd() * 0.4,
+      treeKind: kinds[Math.floor(rnd() * kinds.length)],
+    });
+  }
+
+  return { x, y, w, h: 220, trees, bushes, extras };
 }
 
 /* ----- Fishes ----- */
