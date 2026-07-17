@@ -1516,6 +1516,29 @@ function drawGrass(ctx: CanvasRenderingContext2D, x: number, groundY: number, si
     ctx.stroke();
   }
 }
+/* ---- Decent smaller grass tuft for the tree-stage-3 spread ---- */
+function drawGrassTuft(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  groundY: number,
+  size: number,
+  seed: number,
+) {
+  const shades = ["#87b46b", "#6f9d5a", "#a4c890", "#5c8a4a"];
+  const s = shades[Math.floor(Math.abs(seed) * 997) % shades.length];
+  ctx.strokeStyle = s;
+  ctx.lineWidth = 1.1;
+  const blades = 4;
+  for (let i = 0; i < blades; i++) {
+    const off = (i - (blades - 1) / 2) * 1.6;
+    const lean = ((i % 2 === 0 ? 1 : -1) * (0.6 + (i * 0.17)));
+    const h = size * (0.75 + ((i * 37) % 30) / 100);
+    ctx.beginPath();
+    ctx.moveTo(x + off, groundY);
+    ctx.quadraticCurveTo(x + off + lean, groundY - h / 2, x + off + lean * 1.6, groundY - h);
+    ctx.stroke();
+  }
+}
 function drawMushroom(
   ctx: CanvasRenderingContext2D,
   x: number,
