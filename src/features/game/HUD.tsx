@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Settings2, History, RefreshCw } from "lucide-react";
 import { useGameStore, onPop, type FloatingPop } from "./useGameStore";
+import { shrineStage } from "./GameCanvas";
 import { WorldPopover } from "./WorldPopover";
 import { ActivityPanel } from "@/features/activity/ActivityPanel";
 import { SettingsPanel } from "@/features/settings/SettingsPanel";
