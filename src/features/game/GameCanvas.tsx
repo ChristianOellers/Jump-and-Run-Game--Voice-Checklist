@@ -50,6 +50,9 @@ interface Platform {
   isShrine?: boolean;
   rocky?: boolean;
   bumps?: { x: number; h: number }[];
+  tiltDeg: number; // -3..3, 0 for most and for special platforms
+  bobAmp: number; // 0 for most, small for a few
+  bobPhase: number;
 }
 interface Fish {
   x: number;
@@ -59,6 +62,22 @@ interface Fish {
   size: number;
   kind: "oval" | "long" | "round";
   color: string;
+}
+interface Bird {
+  x: number;
+  y: number;
+  vx: number;
+  phase: number;
+  sineAmp: number;
+  sineFreq: number;
+  size: number;
+}
+interface RainDrop {
+  x: number;
+  y: number;
+  vy: number;
+  vx: number;
+  len: number;
 }
 interface Ripple {
   x: number;
@@ -86,6 +105,7 @@ interface SignRect {
   x2: number;
   y2: number;
 }
+
 
 const WORLD_W = 4200;
 const GROUND_Y = 520;
