@@ -1,52 +1,41 @@
 ## Scope
 
-All changes are presentation-only, contained to `src/features/game/GameCanvas.tsx` and `src/features/game/WorldPopover.tsx`. No business logic, stores, or services touched.
+Frontend-only tweaks in `src/features/game/GameCanvas.tsx` and `src/features/game/HUD.tsx`. No business logic touched.
 
 ## Changes
 
-### 1. Popover opacity
-- In `WorldPopover.tsx`, add `opacity-75` on the outer container (alongside existing transition classes). Applies to the whole card including border/shadow so the world stays readable behind it.
+### 1. Sun placement (never over shrine)
+In the sun init (~L536): compute `sunHomeX` as either left band (`WORLD_W * 0.15..0.32`) or right band (`WORLD_W * 0.68..0.85`), 50/50. Guarantees clear sky above `WORLD_W/2` shrine so seeds can be deposited without sun-ray drain.
 
-### 2. Tree wiggle in the wind
-- Extend the tree records generated in the world init with a `wigglePhase` (random 0..2π) and `wiggleAmp` (0.5–2px). ~60% of trees get non-zero amp; the rest stay static.
-- In the tree render pass, offset the trunk/canopy top by `sin(now * 0.0015 + phase) * amp` on X. Base stays anchored so it looks like it sways from the root. Independent per tree via unique phase.
+### 2. Birds exempt from parallax
+Birds currently drift in world coords behind gameplay. Move their draw pass to use screen-space X (no `cam.x` subtraction, wrap on viewport width instead of `WORLD_W`), keeping their Y band above mountains. They become a pure sky layer like clouds-in-sky, not tied to camera.
 
-### 3. Mountain variant per world
-- Where distant hills are generated, pick one style per world from the seeded RNG: `"soft"` (rounded sine ridges, current look) or `"spiky"` (jagged polyline with sharp triangular peaks, small random peak heights). Never mixed — one style for the whole run.
-- Rocky variant uses the same palette but sharper vertices and slightly darker fill for depth.
+### 3. Stronger platform bob
+In `generateLevel` bob assignment (~L184): raise amplitude to `5..10px` (from 2..5). Keep sine easing (already smooth ease in/out via `Math.sin`), slow the phase slightly by using `now / 1800` in the render (~L1030).
 
-### 4. Birds
-- Add a `birds[]` array (3–6 per world) generated with: `x`, baseline `y` between the hill band and the platform band (behind trees, above mountains), `speed` (slow, direction ±), `sineAmp` 4–10px, `sinePhase`, `size` small.
-- Render pass sits between the mid-hills layer and the platforms layer so birds appear behind gameplay elements.
-- Each frame: advance `x` by `speed`, wrap around world bounds like clouds; draw as a tiny two-arc "M" silhouette (a couple of bezier/quadratic strokes) at `(x, y + sin(now*k + phase)*sineAmp)`.
-- No collision, no interaction — pure decoration inheriting the fish-style independent drift.
+### 4. Floating platforms touch water visually
+After generating platforms, add a decorative "stilt" or extend the platform's `shade` face down to `WATER_Y`. Simplest: in the platform render (~L1043) draw a narrower tapered shade column from platform bottom down to `WATER_Y` (semi-transparent same shade color). Collision unchanged; visual only, so every island appears rooted in water.
 
-### 5. Tilted + floating platforms
-- Extend each platform record with `tiltDeg` (0 for most, ±1–3° for ~20%) and `bob` (`{ amp, phase }` for ~1–2 platforms per world; 0 otherwise).
-- Collision stays axis-aligned against the original rect — tilt/bob are visual only, so physics remains predictable and levels stay solvable.
-- Render: `ctx.save(); ctx.translate(cx, cy); ctx.rotate(tiltDeg*π/180); ctx.translate(0, sin(now*0.0008 + bob.phase)*bob.amp); draw platform; ctx.restore();` Trees/extras placed on the platform draw inside the same transform so they move with it.
-- Shrine, voice, and checklist platforms are excluded from tilt/bob so their signposts and popover anchors stay stable.
+### 5. Varied earth color
+In `makePlatform`, add `soilTint` = one of 3 brown variants (default, warmer, darker) chosen with 25% chance for a non-default. In render, lerp `platFront`/`platShade`/`platTop` toward this tint before the greenness lerp.
 
-### 6. Rain
-- On world regen, 25% chance the level `hasRain = true`. If true, 50% chance `rainIntensity = "heavy"` else `"light"`.
-- Pre-allocate a particle pool: light = ~120 drops, heavy = ~300. Each drop: `x` in camera-relative space, `y`, `vy` (heavy faster), `len` (heavy longer).
-- Render pass: drawn as thin translucent lines above the foreground vignette but below HUD/popovers. Each frame advance `y += vy`; when `y > viewportH`, respawn at top with new random x. Slight wind slant (constant small `vx`).
-- No gameplay effect — purely visual. Independent of daylight scheme.
+### 6. Tree stage in HUD + grass growth on platforms
+- `HUD.tsx`: add a "STAGE x/5" badge next to TREE counter, derived from same `shrineStage` thresholds (duplicate the small helper in HUD or export from GameCanvas — export is cleaner).
+- Grass spread from stage ≥ 3: introduce a per-platform `grassLevel` (0..1) computed each frame. Seed the shrine platform first at stage 3, then propagate to neighbors over time (increment based on elapsed frames, e.g. one platform every ~4s). Store spread state in a ref (`grassSpread: number[]` indexed by platform). This is decoupled from the existing 5-stage `greenness` system (which activates only after stage 5) — grass here is a preview that starts at stage 3.
 
-## Technical notes
+### 7. Grass tuft design
+Add `drawGrassTuft(ctx, x, y, level)` — 3–5 short curved blades, ~6–10px tall, muted olive/sage. Drawn on platform top in the render loop when `grassSpread[i] > 0`, density scaled by grassSpread value.
 
-- All new per-entity randomness uses the existing seeded RNG so a given world seed keeps a stable look.
-- Bird and rain rendering both use cheap 2D primitives (lines / small arcs) to keep the frame budget flat.
-- Platform tilt/bob is applied only in the render transform; the `platforms[]` used by `physics.ts` collision stays untouched.
+### 8. Foreground mist/foam layer
+After water render, before HUD, draw a thin transparent mist band from `WATER_Y - 20` to `WATER_Y + 30`: 6–10 soft blurred white ellipses drifting slowly in screen space (independent of parallax, wrap horizontally). Very low alpha (0.06–0.12), `filter: blur(8px)`. Adds depth over water + platform bases.
 
-## Files
+## Files touched
 
-Edited:
-- `src/features/game/WorldPopover.tsx` — add `opacity-75`.
-- `src/features/game/GameCanvas.tsx` — tree wiggle, mountain variant, birds, platform tilt/bob, rain particles.
+- `src/features/game/GameCanvas.tsx` — items 1–5, 6 (grass logic), 7, 8
+- `src/features/game/HUD.tsx` — item 6 (stage badge)
 
-## Validation
+## Risks
 
-- Typecheck.
-- Playwright: regenerate world a few times, screenshot to confirm mountain variants alternate, birds visible behind trees, some platforms visibly tilted/bobbing, and rain appears on ~1 in 4 seeds.
-- Walk the level end-to-end to confirm tilted/bobbing platforms are still landable (collision unchanged).
+- Grass spread state must reset on level regen — tie to the same seed regen effect.
+- Sun-band randomization: verify SUN_LEASH still keeps sun from crossing shrine when player stands there (leash is 260px, safe with bands starting at 32%/68% of a ~4000px world).
+- Stilts below platforms must not visually clash with existing shade — keep alpha low.
