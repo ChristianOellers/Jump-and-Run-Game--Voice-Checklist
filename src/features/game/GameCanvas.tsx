@@ -563,8 +563,10 @@ export function GameCanvas() {
           }
         }
       }
-      if (player.grounded) player.coyote = 0.08;
-      else player.coyote = Math.max(0, player.coyote - dt);
+      if (player.grounded) {
+        player.coyote = 0.08;
+        player.jumpsUsed = 0;
+      } else player.coyote = Math.max(0, player.coyote - dt);
 
       if (player.x < 10) {
         player.x = 10;
