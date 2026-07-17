@@ -623,31 +623,69 @@ export function GameCanvas() {
         drawFish(ctx, fx, fy, f);
       }
 
+      // Greenness: 0 until the shrine tree matures, then grows toward 1.
+      // Shrine tree fully evolves around growth ~70; world greening runs from 70..270.
+      const growthNow = useGameStore.getState().treeGrowth;
+      const greenness = Math.max(0, Math.min(1, (growthNow - 70) / 200));
+
       // Platforms + foliage
       for (const p of level.platforms) {
         const px = p.x - cam.x;
         if (px + p.w < -40 || px > W + 40) continue;
-        // Front face w/ subtle gradient
+        // Front face w/ subtle gradient — lerps toward mossy earth as world greens
+        const front = lerpColor(C.platFront, "#6b7a3d", greenness * 0.55);
+        const shade = lerpColor(C.platShade, "#4a5a28", greenness * 0.6);
         const pf = ctx.createLinearGradient(0, p.y, 0, p.y + p.h);
-        pf.addColorStop(0, C.platFront);
-        pf.addColorStop(1, C.platShade);
+        pf.addColorStop(0, front);
+        pf.addColorStop(1, shade);
         ctx.fillStyle = pf;
         ctx.fillRect(px, p.y, p.w, p.h);
-        // Top face
-        ctx.fillStyle = C.platTop;
+        // Top face — sandy → mossy green
+        ctx.fillStyle = lerpColor(C.platTop, "#7fb56b", greenness);
         ctx.fillRect(px, p.y, p.w, 8);
-        // Bushes (drawn behind trees so trees overlap them)
+        // Moss overhang once greenness > 0.3
+        if (greenness > 0.3) {
+          ctx.fillStyle = `rgba(90, 140, 70, ${(greenness - 0.3) * 0.9})`;
+          for (let mx = 0; mx < p.w; mx += 6) {
+            const drop = 2 + Math.sin(mx * 0.7) * 2;
+            ctx.fillRect(px + mx, p.y + 8, 4, drop);
+          }
+        }
+        // Original bushes + trees
         for (const b of p.bushes) {
           drawBush(ctx, px + b.x, p.y, b.size, b.hue);
         }
         for (const t of p.trees) {
           drawTree(ctx, px + t.x, p.y, t);
         }
+        // Extras revealed by greenness (skip shrine platform)
+        if (!p.isShrine) {
+          for (const ex of p.extras) {
+            if (greenness < ex.threshold) continue;
+            const fade = Math.min(1, (greenness - ex.threshold) / 0.15);
+            ctx.save();
+            ctx.globalAlpha = fade;
+            const exx = px + ex.x;
+            if (ex.kind === "grass") drawGrass(ctx, exx, p.y, ex.size, ex.hue);
+            else if (ex.kind === "bush") drawBush(ctx, exx, p.y, ex.size, ex.hue);
+            else if (ex.kind === "mushroom")
+              drawMushroom(ctx, exx, p.y, ex.size, ex.mushroomCap!);
+            else if (ex.kind === "tree")
+              drawTree(ctx, exx, p.y, {
+                x: 0,
+                size: ex.size,
+                shade: ex.hue,
+                kind: ex.treeKind!,
+                hue: ex.hue,
+              });
+            ctx.restore();
+          }
+        }
       }
 
-      // Shrine
+      // Shrine — evolving tree with branches
       const shrine = level.zones.find((z) => z.id === "shrine")!;
-      drawShrine(ctx, shrine.x - cam.x, shrine.y, useGameStore.getState().treeGrowth);
+      drawShrineTree(ctx, shrine.x - cam.x, shrine.y, growthNow);
 
       // Signposts + capture screen rects for click hit-testing
       signRects = [];
