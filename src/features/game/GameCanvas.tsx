@@ -734,6 +734,68 @@ export function GameCanvas() {
       ctx.fillRect(-s / 2, -s / 2, s, s);
       ctx.restore();
 
+      // Sun rays — subtle flashlight on player + random rays when in reach
+      if (inSunReach) {
+        const strength = 1 - sunDist / SUN_RAY_RADIUS; // 0..1
+        const pxScreen = player.x - cam.x;
+        const pyScreen = player.y - 12;
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        // Focused beam sun -> player
+        const beamAng = Math.atan2(pyScreen - sunScreenY, pxScreen - sunScreenX);
+        const beamLen = Math.hypot(pxScreen - sunScreenX, pyScreen - sunScreenY);
+        const beam = ctx.createLinearGradient(sunScreenX, sunScreenY, pxScreen, pyScreen);
+        beam.addColorStop(0, `rgba(255, 236, 180, ${0.28 * strength})`);
+        beam.addColorStop(1, `rgba(255, 236, 180, 0)`);
+        ctx.translate(sunScreenX, sunScreenY);
+        ctx.rotate(beamAng);
+        ctx.fillStyle = beam;
+        ctx.beginPath();
+        ctx.moveTo(0, -6);
+        ctx.lineTo(beamLen, -34 * strength - 8);
+        ctx.lineTo(beamLen, 34 * strength + 8);
+        ctx.lineTo(0, 6);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        // A few random rays fanning outward, biased toward player direction
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.translate(sunScreenX, sunScreenY);
+        const rayCount = 5;
+        for (let i = 0; i < rayCount; i++) {
+          const jitter = Math.sin(now / 400 + i * 1.7) * 0.35;
+          const ang = beamAng + (i - (rayCount - 1) / 2) * 0.18 + jitter * 0.1;
+          const len = beamLen * (0.7 + Math.abs(Math.sin(now / 700 + i)) * 0.5);
+          const rg = ctx.createLinearGradient(0, 0, Math.cos(ang) * len, Math.sin(ang) * len);
+          rg.addColorStop(0, `rgba(255, 240, 200, ${0.14 * strength})`);
+          rg.addColorStop(1, "rgba(255, 240, 200, 0)");
+          ctx.fillStyle = rg;
+          ctx.save();
+          ctx.rotate(ang);
+          ctx.beginPath();
+          ctx.moveTo(0, -3);
+          ctx.lineTo(len, -10);
+          ctx.lineTo(len, 10);
+          ctx.lineTo(0, 3);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+        ctx.restore();
+
+        // Halo on the player
+        const pHalo = ctx.createRadialGradient(pxScreen, pyScreen, 4, pxScreen, pyScreen, 60);
+        pHalo.addColorStop(0, `rgba(255, 240, 200, ${0.35 * strength})`);
+        pHalo.addColorStop(1, "rgba(255, 240, 200, 0)");
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.fillStyle = pHalo;
+        ctx.fillRect(pxScreen - 60, pyScreen - 60, 120, 120);
+        ctx.restore();
+      }
+
       // Parallax clouds — drift infinitely; wrap when off-world
       ctx.fillStyle = C.cloud;
       for (const c of clouds) {
