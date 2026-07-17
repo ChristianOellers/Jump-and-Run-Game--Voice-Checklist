@@ -26,6 +26,15 @@ interface Bush {
   size: number;
   hue: number;
 }
+interface Extra {
+  kind: "tree" | "bush" | "grass" | "mushroom";
+  x: number;
+  size: number;
+  hue: number;
+  threshold: number; // 0..1 greenness required to reveal
+  treeKind?: Tree["kind"];
+  mushroomCap?: string;
+}
 interface Platform {
   x: number;
   y: number;
@@ -33,6 +42,8 @@ interface Platform {
   h: number;
   trees: Tree[];
   bushes: Bush[];
+  extras: Extra[];
+  isShrine?: boolean;
 }
 interface Fish {
   x: number;
@@ -116,6 +127,8 @@ function generateLevel(seed: number): { platforms: Platform[]; zones: Zone[] } {
     y: GROUND_Y - 10,
     trees: [],
     bushes: [],
+    extras: [],
+    isShrine: true,
   };
 
   const first = platforms[0];
@@ -145,7 +158,55 @@ function makePlatform(x: number, y: number, w: number, rnd: () => number): Platf
     size: 6 + rnd() * 8,
     hue: rnd(),
   }));
-  return { x, y, w, h: 220, trees, bushes };
+
+  // Pre-generate a lush "greening" layer that reveals as the shrine tree matures.
+  // Each entry has a threshold in 0..1; drawn only when greenness >= threshold.
+  const extras: Extra[] = [];
+  const grassCount = 8 + Math.floor(rnd() * 10);
+  for (let i = 0; i < grassCount; i++) {
+    extras.push({
+      kind: "grass",
+      x: 4 + rnd() * (w - 8),
+      size: 3 + rnd() * 4,
+      hue: rnd(),
+      threshold: 0.05 + rnd() * 0.4,
+    });
+  }
+  const extraBushCount = 1 + Math.floor(rnd() * 3);
+  for (let i = 0; i < extraBushCount; i++) {
+    extras.push({
+      kind: "bush",
+      x: 8 + rnd() * (w - 16),
+      size: 6 + rnd() * 10,
+      hue: rnd(),
+      threshold: 0.2 + rnd() * 0.4,
+    });
+  }
+  const mushroomCount = Math.floor(rnd() * 3);
+  const caps = ["#c04a3a", "#d98a3a", "#8a6fb0", "#efe0a8"];
+  for (let i = 0; i < mushroomCount; i++) {
+    extras.push({
+      kind: "mushroom",
+      x: 10 + rnd() * (w - 20),
+      size: 3 + rnd() * 3,
+      hue: rnd(),
+      threshold: 0.35 + rnd() * 0.35,
+      mushroomCap: caps[Math.floor(rnd() * caps.length)],
+    });
+  }
+  const extraTreeCount = 1 + Math.floor(rnd() * 3);
+  for (let i = 0; i < extraTreeCount; i++) {
+    extras.push({
+      kind: "tree",
+      x: 10 + rnd() * (w - 20),
+      size: 18 + rnd() * 22,
+      hue: rnd(),
+      threshold: 0.55 + rnd() * 0.4,
+      treeKind: kinds[Math.floor(rnd() * kinds.length)],
+    });
+  }
+
+  return { x, y, w, h: 220, trees, bushes, extras };
 }
 
 /* ----- Fishes ----- */
@@ -562,31 +623,69 @@ export function GameCanvas() {
         drawFish(ctx, fx, fy, f);
       }
 
+      // Greenness: 0 until the shrine tree matures, then grows toward 1.
+      // Shrine tree fully evolves around growth ~70; world greening runs from 70..270.
+      const growthNow = useGameStore.getState().treeGrowth;
+      const greenness = Math.max(0, Math.min(1, (growthNow - 70) / 200));
+
       // Platforms + foliage
       for (const p of level.platforms) {
         const px = p.x - cam.x;
         if (px + p.w < -40 || px > W + 40) continue;
-        // Front face w/ subtle gradient
+        // Front face w/ subtle gradient — lerps toward mossy earth as world greens
+        const front = lerpColor(C.platFront, "#6b7a3d", greenness * 0.55);
+        const shade = lerpColor(C.platShade, "#4a5a28", greenness * 0.6);
         const pf = ctx.createLinearGradient(0, p.y, 0, p.y + p.h);
-        pf.addColorStop(0, C.platFront);
-        pf.addColorStop(1, C.platShade);
+        pf.addColorStop(0, front);
+        pf.addColorStop(1, shade);
         ctx.fillStyle = pf;
         ctx.fillRect(px, p.y, p.w, p.h);
-        // Top face
-        ctx.fillStyle = C.platTop;
+        // Top face — sandy → mossy green
+        ctx.fillStyle = lerpColor(C.platTop, "#7fb56b", greenness);
         ctx.fillRect(px, p.y, p.w, 8);
-        // Bushes (drawn behind trees so trees overlap them)
+        // Moss overhang once greenness > 0.3
+        if (greenness > 0.3) {
+          ctx.fillStyle = `rgba(90, 140, 70, ${(greenness - 0.3) * 0.9})`;
+          for (let mx = 0; mx < p.w; mx += 6) {
+            const drop = 2 + Math.sin(mx * 0.7) * 2;
+            ctx.fillRect(px + mx, p.y + 8, 4, drop);
+          }
+        }
+        // Original bushes + trees
         for (const b of p.bushes) {
           drawBush(ctx, px + b.x, p.y, b.size, b.hue);
         }
         for (const t of p.trees) {
           drawTree(ctx, px + t.x, p.y, t);
         }
+        // Extras revealed by greenness (skip shrine platform)
+        if (!p.isShrine) {
+          for (const ex of p.extras) {
+            if (greenness < ex.threshold) continue;
+            const fade = Math.min(1, (greenness - ex.threshold) / 0.15);
+            ctx.save();
+            ctx.globalAlpha = fade;
+            const exx = px + ex.x;
+            if (ex.kind === "grass") drawGrass(ctx, exx, p.y, ex.size, ex.hue);
+            else if (ex.kind === "bush") drawBush(ctx, exx, p.y, ex.size, ex.hue);
+            else if (ex.kind === "mushroom")
+              drawMushroom(ctx, exx, p.y, ex.size, ex.mushroomCap!);
+            else if (ex.kind === "tree")
+              drawTree(ctx, exx, p.y, {
+                x: 0,
+                size: ex.size,
+                shade: ex.hue,
+                kind: ex.treeKind!,
+                hue: ex.hue,
+              });
+            ctx.restore();
+          }
+        }
       }
 
-      // Shrine
+      // Shrine — evolving tree with branches
       const shrine = level.zones.find((z) => z.id === "shrine")!;
-      drawShrine(ctx, shrine.x - cam.x, shrine.y, useGameStore.getState().treeGrowth);
+      drawShrineTree(ctx, shrine.x - cam.x, shrine.y, growthNow);
 
       // Signposts + capture screen rects for click hit-testing
       signRects = [];
@@ -821,27 +920,181 @@ function drawFish(ctx: CanvasRenderingContext2D, x: number, y: number, f: Fish) 
   ctx.arc(x + dir * f.size * 0.5, y - f.size * 0.15, Math.max(0.6, f.size * 0.18), 0, Math.PI * 2);
   ctx.fill();
 }
-function drawShrine(ctx: CanvasRenderingContext2D, x: number, groundY: number, growth: number) {
+/* ---- Color lerp ---- */
+function hexToRgb(h: string): [number, number, number] {
+  const n = parseInt(h.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function lerpColor(a: string, b: string, t: number) {
+  const [ar, ag, ab] = hexToRgb(a);
+  const [br, bg, bb] = hexToRgb(b);
+  const r = Math.round(ar + (br - ar) * t);
+  const g = Math.round(ag + (bg - ag) * t);
+  const bl = Math.round(ab + (bb - ab) * t);
+  return `rgb(${r},${g},${bl})`;
+}
+
+/* ---- Grass & mushroom ---- */
+function drawGrass(ctx: CanvasRenderingContext2D, x: number, groundY: number, size: number, hue: number) {
+  const shades = ["#7fb56b", "#5c9257", "#a3cf94"];
+  ctx.strokeStyle = shades[Math.floor(hue * shades.length) % shades.length];
+  ctx.lineWidth = 1;
+  for (let i = -1; i <= 1; i++) {
+    ctx.beginPath();
+    ctx.moveTo(x + i * 1.5, groundY);
+    ctx.quadraticCurveTo(x + i * 1.5 + i, groundY - size / 2, x + i * 2, groundY - size);
+    ctx.stroke();
+  }
+}
+function drawMushroom(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  groundY: number,
+  size: number,
+  cap: string,
+) {
+  // stem
+  ctx.fillStyle = "#f2ead9";
+  ctx.fillRect(x - size * 0.25, groundY - size * 1.1, size * 0.5, size * 1.1);
+  // cap
+  ctx.fillStyle = cap;
+  ctx.beginPath();
+  ctx.ellipse(x, groundY - size * 1.1, size, size * 0.7, 0, Math.PI, 0);
+  ctx.fill();
+  // dots
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.beginPath();
+  ctx.arc(x - size * 0.35, groundY - size * 1.25, size * 0.12, 0, Math.PI * 2);
+  ctx.arc(x + size * 0.25, groundY - size * 1.35, size * 0.14, 0, Math.PI * 2);
+  ctx.arc(x + size * 0.05, groundY - size * 1.15, size * 0.1, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/* ---- Shrine tree with branches, 5 evolutionary stages ---- */
+function shrineStage(growth: number) {
+  if (growth < 8) return 0;
+  if (growth < 20) return 1;
+  if (growth < 40) return 2;
+  if (growth < 70) return 3;
+  return 4;
+}
+function drawShrineTree(ctx: CanvasRenderingContext2D, x: number, groundY: number, growth: number) {
+  // Stone altar
   ctx.fillStyle = C.shrine;
   ctx.fillRect(x - 22, groundY - 10, 44, 10);
   ctx.fillStyle = "#a89a8a";
   ctx.fillRect(x - 22, groundY - 14, 44, 4);
-  const trunkH = 10 + Math.min(60, growth * 1.5);
-  ctx.fillStyle = C.treeTrunk;
-  ctx.fillRect(x - 3, groundY - 14 - trunkH, 6, trunkH);
-  const canopy = 8 + Math.min(50, growth * 1.2);
-  ctx.fillStyle = C.tree;
-  ctx.beginPath();
-  ctx.arc(x, groundY - 14 - trunkH, canopy, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#4d8f5a";
-  ctx.beginPath();
-  ctx.arc(x - canopy / 3, groundY - 14 - trunkH - canopy / 4, canopy * 0.6, 0, Math.PI * 2);
-  ctx.fill();
+
+  const stage = shrineStage(growth);
+  const base = groundY - 14;
+  // extra tuning within a stage: gentle scale continues to nudge upward
+  const nudge = Math.min(1, (growth - [0, 8, 20, 40, 70][stage]) / 40);
+  const leaf1 = "#7fb56b";
+  const leaf2 = "#4d8f5a";
+  const leaf3 = "#a3cf94";
+
+  if (stage === 0) {
+    // sprout: two tiny leaves
+    ctx.strokeStyle = "#5c9257";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x, base);
+    ctx.lineTo(x, base - 8);
+    ctx.stroke();
+    ctx.fillStyle = leaf1;
+    ctx.beginPath();
+    ctx.ellipse(x - 3, base - 8, 3, 2, -0.6, 0, Math.PI * 2);
+    ctx.ellipse(x + 3, base - 8, 3, 2, 0.6, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (stage === 1) {
+    // sapling: thin trunk + small canopy
+    const h = 14 + nudge * 8;
+    ctx.strokeStyle = C.treeTrunk;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x, base);
+    ctx.lineTo(x, base - h);
+    ctx.stroke();
+    ctx.fillStyle = leaf1;
+    ctx.beginPath();
+    ctx.arc(x, base - h, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = leaf2;
+    ctx.beginPath();
+    ctx.arc(x - 3, base - h - 2, 4, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (stage === 2) {
+    // young: trunk + 2 branches + canopy
+    const h = 26 + nudge * 10;
+    drawBranch(ctx, x, base, -Math.PI / 2, h, 4, 2, leaf1, leaf2, leaf3);
+  } else if (stage === 3) {
+    // mature: fuller branching
+    const h = 42 + nudge * 12;
+    drawBranch(ctx, x, base, -Math.PI / 2, h, 6, 3, leaf1, leaf2, leaf3);
+  } else {
+    // ancient: huge lush canopy
+    const h = 58 + nudge * 14;
+    drawBranch(ctx, x, base, -Math.PI / 2, h, 8, 4, leaf1, leaf2, leaf3);
+    // extra ambient leaves
+    ctx.fillStyle = "rgba(163, 207, 148, 0.45)";
+    ctx.beginPath();
+    ctx.arc(x, base - h - 6, 42, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   ctx.font = "900 10px 'Archivo Black', system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.fillStyle = "#4a4a4a";
   ctx.fillText("SHRINE", x, groundY + 20);
+}
+
+function drawBranch(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  angle: number,
+  length: number,
+  width: number,
+  depth: number,
+  leaf1: string,
+  leaf2: string,
+  leaf3: string,
+) {
+  const ex = x + Math.cos(angle) * length;
+  const ey = y + Math.sin(angle) * length;
+  ctx.strokeStyle = C.treeTrunk;
+  ctx.lineWidth = width;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(ex, ey);
+  ctx.stroke();
+  if (depth <= 0) {
+    // leaf cluster
+    ctx.fillStyle = leaf2;
+    ctx.beginPath();
+    ctx.arc(ex, ey, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = leaf1;
+    ctx.beginPath();
+    ctx.arc(ex - 4, ey - 3, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = leaf3;
+    ctx.beginPath();
+    ctx.arc(ex + 3, ey - 5, 6, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+  // Two child branches; slight determinism via angle sign
+  const spread = 0.55 + depth * 0.05;
+  const nextLen = length * 0.72;
+  const nextW = Math.max(1, width * 0.7);
+  drawBranch(ctx, ex, ey, angle - spread, nextLen, nextW, depth - 1, leaf1, leaf2, leaf3);
+  drawBranch(ctx, ex, ey, angle + spread, nextLen, nextW, depth - 1, leaf1, leaf2, leaf3);
+  // occasional third smaller branch for lushness at higher depths
+  if (depth >= 3) {
+    drawBranch(ctx, ex, ey, angle - spread * 0.2, nextLen * 0.85, nextW * 0.9, depth - 1, leaf1, leaf2, leaf3);
+  }
 }
 function drawSignpost(
   ctx: CanvasRenderingContext2D,
