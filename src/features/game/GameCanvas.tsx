@@ -699,7 +699,15 @@ export function GameCanvas() {
         player.distAccum = 0;
         // splash ripple
         ripples.push({ x: shrine.x, y: WATER_Y, born: now, life: 900 });
+        // Water penalty: lose up to 10 seeds (never below 0).
+        const have = useGameStore.getState().seeds;
+        const take = Math.min(have, 10);
+        if (take > 0) {
+          spendSeeds(take);
+          emitPop(`-${take} 💧`, playerScreen.x, playerScreen.y - 20, "#3a86c0");
+        }
       }
+
 
       // Reward: steps every STEP_INTERVAL seconds
       player.distAccum += Math.abs(player.x - prevX);
@@ -746,7 +754,8 @@ export function GameCanvas() {
           sun.drainAcc -= whole;
           const have = useGameStore.getState().seeds;
           if (have > 0) {
-            const take = Math.min(have, whole);
+            // -3 seeds per second under the ray.
+            const take = Math.min(have, whole * 3);
             spendSeeds(take);
             emitPop(`-${take} ☀`, playerScreen.x, playerScreen.y - 40, "#d98a3a");
           }
@@ -754,6 +763,8 @@ export function GameCanvas() {
       } else {
         sun.drainAcc = 0;
       }
+
+
 
       let active: ZoneId = null;
       let bestD = 220;
