@@ -282,6 +282,7 @@ function makePlatform(x: number, y: number, w: number, rnd: () => number): Platf
 
   // Cosmetic tilt (~20% of platforms) and gentle bob (~1-2 per world; assigned later).
   const tiltDeg = rnd() < 0.2 ? (rnd() < 0.5 ? -1 : 1) * (1 + rnd() * 2) : 0;
+  const soilVariant: 0 | 1 | 2 = rnd() < 0.25 ? (rnd() < 0.5 ? 1 : 2) : 0;
 
   return {
     x,
@@ -296,6 +297,7 @@ function makePlatform(x: number, y: number, w: number, rnd: () => number): Platf
     tiltDeg,
     bobAmp: 0,
     bobPhase: rnd() * Math.PI * 2,
+    soilVariant,
   };
 }
 
