@@ -687,7 +687,9 @@ export function GameCanvas() {
                 shade: ex.hue,
                 kind: ex.treeKind!,
                 hue: ex.hue,
-              });
+                wiggle: 0,
+                phase: 0,
+              }, 0);
             ctx.restore();
           }
         }
