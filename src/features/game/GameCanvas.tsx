@@ -119,7 +119,14 @@ const PLAYER_R = 12;
 const STEP_INTERVAL = 3; // seconds — reward tick cadence
 
 /* ----- Level generation ----- */
-function generateLevel(seed: number): { platforms: Platform[]; zones: Zone[] } {
+interface Level {
+  platforms: Platform[];
+  zones: Zone[];
+  mountainStyle: "soft" | "spiky";
+  hasRain: boolean;
+  rainHeavy: boolean;
+}
+function generateLevel(seed: number): Level {
   const rnd = mulberry32(seed);
   const platforms: Platform[] = [];
 
@@ -159,7 +166,24 @@ function generateLevel(seed: number): { platforms: Platform[]; zones: Zone[] } {
     bushes: [],
     extras: [],
     isShrine: true,
+    tiltDeg: 0,
+    bobAmp: 0,
   };
+
+  // Strip tilt from voice/checklist end platforms so signposts stay upright.
+  platforms[0].tiltDeg = 0;
+  platforms[platforms.length - 1].tiltDeg = 0;
+
+  // Assign a gentle vertical bob to 1-2 non-special platforms.
+  const bobCount = 1 + Math.floor(rnd() * 2);
+  const eligible = platforms
+    .map((p, i) => ({ p, i }))
+    .filter(({ p, i }) => !p.isShrine && i !== 0 && i !== platforms.length - 1);
+  for (let k = 0; k < bobCount && eligible.length > 0; k++) {
+    const pick = eligible.splice(Math.floor(rnd() * eligible.length), 1)[0];
+    pick.p.bobAmp = 2 + rnd() * 3; // 2..5px
+    pick.p.bobPhase = rnd() * Math.PI * 2;
+  }
 
   const first = platforms[0];
   const last = platforms[platforms.length - 1];
@@ -169,8 +193,14 @@ function generateLevel(seed: number): { platforms: Platform[]; zones: Zone[] } {
     { id: "checklist", x: last.x + last.w / 2, y: last.y },
     { id: "shrine", x: shrine.x + shrine.w / 2, y: shrine.y },
   ];
-  return { platforms, zones };
+
+  const mountainStyle: "soft" | "spiky" = rnd() < 0.5 ? "soft" : "spiky";
+  const hasRain = rnd() < 0.25;
+  const rainHeavy = hasRain && rnd() < 0.5;
+
+  return { platforms, zones, mountainStyle, hasRain, rainHeavy };
 }
+
 
 function makePlatform(x: number, y: number, w: number, rnd: () => number): Platform {
   const treeCount = 1 + Math.floor(rnd() * 4); // 1..4
