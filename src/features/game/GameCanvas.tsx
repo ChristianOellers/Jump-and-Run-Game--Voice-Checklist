@@ -26,6 +26,15 @@ interface Bush {
   size: number;
   hue: number;
 }
+interface Extra {
+  kind: "tree" | "bush" | "grass" | "mushroom";
+  x: number;
+  size: number;
+  hue: number;
+  threshold: number; // 0..1 greenness required to reveal
+  treeKind?: Tree["kind"];
+  mushroomCap?: string;
+}
 interface Platform {
   x: number;
   y: number;
@@ -33,6 +42,8 @@ interface Platform {
   h: number;
   trees: Tree[];
   bushes: Bush[];
+  extras: Extra[];
+  isShrine?: boolean;
 }
 interface Fish {
   x: number;
