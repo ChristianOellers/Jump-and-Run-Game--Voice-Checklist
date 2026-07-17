@@ -483,7 +483,35 @@ export function GameCanvas() {
 
       const left = keys.has("ArrowLeft") || keys.has("KeyA");
       const right = keys.has("ArrowRight") || keys.has("KeyD");
-      const jump = keys.has("Space") || keys.has("ArrowUp") || keys.has("KeyW");
+      const jumpDown = keys.has("Space") || keys.has("ArrowUp") || keys.has("KeyW");
+      const jumpPressed =
+        justPressed.has("Space") || justPressed.has("ArrowUp") || justPressed.has("KeyW");
+      const leftPressed = justPressed.has("ArrowLeft") || justPressed.has("KeyA");
+      const rightPressed = justPressed.has("ArrowRight") || justPressed.has("KeyD");
+
+      // Double-tap dash detection (5s cooldown)
+      player.dashCooldown = Math.max(0, player.dashCooldown - dt);
+      const DASH_WINDOW = 0.28;
+      if (leftPressed) {
+        if (player.dashCooldown === 0 && now / 1000 - player.lastLeftTap < DASH_WINDOW) {
+          player.vx = -MOVE_MAX * 2.3;
+          player.dashCooldown = 5;
+          emitPop("DASH", playerScreen.x, playerScreen.y - 30, "#c05a3a");
+          player.lastLeftTap = -999;
+        } else {
+          player.lastLeftTap = now / 1000;
+        }
+      }
+      if (rightPressed) {
+        if (player.dashCooldown === 0 && now / 1000 - player.lastRightTap < DASH_WINDOW) {
+          player.vx = MOVE_MAX * 2.3;
+          player.dashCooldown = 5;
+          emitPop("DASH", playerScreen.x, playerScreen.y - 30, "#c05a3a");
+          player.lastRightTap = -999;
+        } else {
+          player.lastRightTap = now / 1000;
+        }
+      }
 
       if (left) player.vx -= MOVE_ACCEL * dt;
       if (right) player.vx += MOVE_ACCEL * dt;
@@ -491,15 +519,28 @@ export function GameCanvas() {
         const s = Math.sign(player.vx);
         player.vx -= s * Math.min(Math.abs(player.vx), FRICTION * dt);
       }
-      player.vx = Math.max(-MOVE_MAX, Math.min(MOVE_MAX, player.vx));
+      // Allow dash velocity above normal cap; smoothly clamp back.
+      const cap = Math.max(MOVE_MAX, Math.abs(player.vx) - FRICTION * dt * 0.6);
+      player.vx = Math.max(-cap, Math.min(cap, player.vx));
 
       player.vy += GRAVITY * dt;
 
-      if (jump && (player.grounded || player.coyote > 0)) {
-        player.vy = JUMP_V;
-        player.grounded = false;
-        player.coyote = 0;
+      // Double jump: first jump from ground/coyote, second in-air
+      if (jumpPressed) {
+        if (player.grounded || player.coyote > 0) {
+          player.vy = JUMP_V;
+          player.grounded = false;
+          player.coyote = 0;
+          player.jumpsUsed = 1;
+        } else if (player.jumpsUsed < 2) {
+          // Soft second jump — reset upward, achieves ~2x apex height
+          player.vy = JUMP_V;
+          player.jumpsUsed = 2;
+          emitPop("JUMP", playerScreen.x, playerScreen.y - 24, "#4d8f5a");
+        }
       }
+      // Variable-height: releasing jump early softens vertical
+      if (!jumpDown && player.vy < -200) player.vy *= 0.9;
 
       const prevY = player.y;
       const prevX = player.x;
