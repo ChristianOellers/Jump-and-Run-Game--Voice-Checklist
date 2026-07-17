@@ -735,65 +735,69 @@ export function GameCanvas() {
       ctx.fillRect(-s / 2, -s / 2, s, s);
       ctx.restore();
 
-      // Sun rays — subtle flashlight on player + random rays when in reach
-      if (inSunReach) {
-        const strength = 1 - sunDist / SUN_RAY_RADIUS; // 0..1
+      // Sun rays — soft blurry cone from the sun down onto the player
+      if (rayStrength > 0) {
         const pxScreen = player.x - cam.x;
         const pyScreen = player.y - 12;
-        ctx.save();
-        ctx.globalCompositeOperation = "lighter";
-        // Focused beam sun -> player
         const beamAng = Math.atan2(pyScreen - sunScreenY, pxScreen - sunScreenX);
         const beamLen = Math.hypot(pxScreen - sunScreenX, pyScreen - sunScreenY);
-        const beam = ctx.createLinearGradient(sunScreenX, sunScreenY, pxScreen, pyScreen);
-        beam.addColorStop(0, `rgba(255, 236, 180, ${0.28 * strength})`);
-        beam.addColorStop(1, `rgba(255, 236, 180, 0)`);
+
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.filter = "blur(14px)";
+        // Main soft cone sun -> player (widens toward the ground)
         ctx.translate(sunScreenX, sunScreenY);
         ctx.rotate(beamAng);
-        ctx.fillStyle = beam;
+        const cone = ctx.createLinearGradient(0, 0, beamLen, 0);
+        cone.addColorStop(0, `rgba(255, 240, 200, ${0.08 * rayStrength})`);
+        cone.addColorStop(1, `rgba(255, 240, 200, 0)`);
+        ctx.fillStyle = cone;
+        const wideNear = 10;
+        const wideFar = 60 + 40 * rayStrength;
         ctx.beginPath();
-        ctx.moveTo(0, -6);
-        ctx.lineTo(beamLen, -34 * strength - 8);
-        ctx.lineTo(beamLen, 34 * strength + 8);
-        ctx.lineTo(0, 6);
+        ctx.moveTo(0, -wideNear);
+        ctx.lineTo(beamLen, -wideFar);
+        ctx.lineTo(beamLen, wideFar);
+        ctx.lineTo(0, wideNear);
         ctx.closePath();
         ctx.fill();
         ctx.restore();
 
-        // A few random rays fanning outward, biased toward player direction
+        // A couple of faint secondary rays for depth
         ctx.save();
         ctx.globalCompositeOperation = "lighter";
+        ctx.filter = "blur(8px)";
         ctx.translate(sunScreenX, sunScreenY);
-        const rayCount = 5;
-        for (let i = 0; i < rayCount; i++) {
-          const jitter = Math.sin(now / 400 + i * 1.7) * 0.35;
-          const ang = beamAng + (i - (rayCount - 1) / 2) * 0.18 + jitter * 0.1;
-          const len = beamLen * (0.7 + Math.abs(Math.sin(now / 700 + i)) * 0.5);
-          const rg = ctx.createLinearGradient(0, 0, Math.cos(ang) * len, Math.sin(ang) * len);
-          rg.addColorStop(0, `rgba(255, 240, 200, ${0.14 * strength})`);
-          rg.addColorStop(1, "rgba(255, 240, 200, 0)");
-          ctx.fillStyle = rg;
+        for (let i = 0; i < 3; i++) {
+          const jitter = Math.sin(now / 500 + i * 1.7) * 0.05;
+          const ang = beamAng + (i - 1) * 0.09 + jitter;
+          const len = beamLen * (0.85 + Math.abs(Math.sin(now / 900 + i)) * 0.25);
           ctx.save();
           ctx.rotate(ang);
+          const rg = ctx.createLinearGradient(0, 0, len, 0);
+          rg.addColorStop(0, `rgba(255, 244, 210, ${0.05 * rayStrength})`);
+          rg.addColorStop(1, "rgba(255, 244, 210, 0)");
+          ctx.fillStyle = rg;
           ctx.beginPath();
-          ctx.moveTo(0, -3);
-          ctx.lineTo(len, -10);
-          ctx.lineTo(len, 10);
-          ctx.lineTo(0, 3);
+          ctx.moveTo(0, -4);
+          ctx.lineTo(len, -18);
+          ctx.lineTo(len, 18);
+          ctx.lineTo(0, 4);
           ctx.closePath();
           ctx.fill();
           ctx.restore();
         }
         ctx.restore();
 
-        // Halo on the player
-        const pHalo = ctx.createRadialGradient(pxScreen, pyScreen, 4, pxScreen, pyScreen, 60);
-        pHalo.addColorStop(0, `rgba(255, 240, 200, ${0.35 * strength})`);
-        pHalo.addColorStop(1, "rgba(255, 240, 200, 0)");
+        // Soft halo landing on the player
         ctx.save();
         ctx.globalCompositeOperation = "lighter";
+        ctx.filter = "blur(6px)";
+        const pHalo = ctx.createRadialGradient(pxScreen, pyScreen, 4, pxScreen, pyScreen, 70);
+        pHalo.addColorStop(0, `rgba(255, 240, 200, ${0.18 * rayStrength})`);
+        pHalo.addColorStop(1, "rgba(255, 240, 200, 0)");
         ctx.fillStyle = pHalo;
-        ctx.fillRect(pxScreen - 60, pyScreen - 60, 120, 120);
+        ctx.fillRect(pxScreen - 80, pyScreen - 80, 160, 160);
         ctx.restore();
       }
 
