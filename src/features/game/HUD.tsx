@@ -85,6 +85,12 @@ export function HUD() {
           <div className="flex items-baseline gap-3 font-display text-sm text-primary-foreground">
             <Counter label="SEED" value={seeds} light />
             <Counter label="TREE" value={treeGrowth} light />
+            <span className="flex items-baseline gap-1">
+              <span className="text-[0.6rem] uppercase tracking-widest text-primary-foreground/70">
+                STAGE
+              </span>
+              <span className="tabular-nums">{shrineStage(treeGrowth) + 1}/5</span>
+            </span>
           </div>
         </div>
       </div>
