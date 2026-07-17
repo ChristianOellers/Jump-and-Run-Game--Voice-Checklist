@@ -1251,6 +1251,23 @@ export function GameCanvas() {
       ctx.fillStyle = "rgba(168, 212, 224, 0.6)";
       ctx.fill();
 
+      // ----- Foreground mist / foam puffs (screen-space, low alpha) -----
+      ctx.save();
+      ctx.filter = "blur(8px)";
+      const mistBaseY = WATER_Y - 6;
+      for (const puff of mistPuffs) {
+        puff.x += puff.vx * dt;
+        if (puff.x > W + 120) puff.x = -puff.w - 20;
+        const my = mistBaseY + puff.yOff + Math.sin(now / 1400 + puff.x * 0.01) * 3;
+        ctx.fillStyle = `rgba(245, 250, 255, ${puff.alpha})`;
+        ctx.beginPath();
+        ctx.ellipse(puff.x, my, puff.w / 2, puff.h / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+
+
       // ----- Particle motes (drifting dust/pollen) -----
       for (const m of motes) {
         m.x += m.vx * dt;
