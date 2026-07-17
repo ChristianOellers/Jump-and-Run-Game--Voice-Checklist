@@ -17,6 +17,7 @@ interface Persisted {
 interface State extends Persisted {
   hydrated: boolean;
   activeZone: ZoneId;
+  dismissedZone: ZoneId;
   hydrate: () => void;
   addSteps: (n: number) => void;
   addWords: (n: number) => void;
@@ -24,6 +25,8 @@ interface State extends Persisted {
   spendSeeds: (n: number) => void;
   growTree: (n: number) => void;
   setActiveZone: (z: ZoneId) => void;
+  dismissZone: (z: ZoneId) => void;
+  openZone: (z: ZoneId) => void;
   regenLevel: () => void;
 }
 
