@@ -1199,6 +1199,27 @@ export function GameCanvas() {
       ctx.fillStyle = vg;
       ctx.fillRect(0, 0, W, H);
 
+      // Rain — decorative overlay, screen-space so it fills the viewport uniformly.
+      if (rainDrops.length > 0) {
+        ctx.strokeStyle = level.rainHeavy
+          ? "rgba(200, 220, 240, 0.55)"
+          : "rgba(200, 220, 240, 0.35)";
+        ctx.lineWidth = level.rainHeavy ? 1.4 : 1;
+        ctx.beginPath();
+        for (const d of rainDrops) {
+          d.x += d.vx * dt;
+          d.y += d.vy * dt;
+          if (d.y > H) {
+            d.y = -10;
+            d.x = Math.random() * (W + 100);
+          }
+          if (d.x < -10) d.x = W + 10;
+          ctx.moveTo(d.x, d.y);
+          ctx.lineTo(d.x + d.vx * 0.012, d.y + d.len);
+        }
+        ctx.stroke();
+      }
+
       justPressed.clear();
       raf = requestAnimationFrame(loop);
     };
@@ -1208,10 +1229,12 @@ export function GameCanvas() {
       running = false;
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
+      window.removeEventListener("resize", rainResize);
       window.removeEventListener("keydown", keyDown);
       window.removeEventListener("keyup", keyUp);
       canvas.removeEventListener("pointerdown", onPointerDown);
     };
+
   }, [levelSeed, setActiveZone, addSteps, growTree, spendSeeds, openZone]);
 
   return (
