@@ -53,6 +53,7 @@ interface Platform {
   tiltDeg: number; // -3..3, 0 for most and for special platforms
   bobAmp: number; // 0 for most, small for a few
   bobPhase: number;
+  soilVariant: 0 | 1 | 2; // 0 = default, 1 = warm, 2 = darker
 }
 interface Fish {
   x: number;
