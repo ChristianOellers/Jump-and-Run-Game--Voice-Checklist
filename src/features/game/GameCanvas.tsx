@@ -912,9 +912,32 @@ export function GameCanvas() {
 
       // Distant hills
       ctx.fillStyle = C.hillFar;
-      drawHills(ctx, W, H, cam.x * 0.25, 60, GROUND_Y - 40);
+      drawHills(ctx, W, H, cam.x * 0.25, 60, GROUND_Y - 40, level.mountainStyle);
       ctx.fillStyle = C.hillMid;
-      drawHills(ctx, W, H, cam.x * 0.45, 40, GROUND_Y);
+      drawHills(ctx, W, H, cam.x * 0.45, 40, GROUND_Y, level.mountainStyle);
+
+      // Birds — behind gameplay layer, above the mountains. Follow fish-style drift.
+      ctx.fillStyle = "rgba(40, 40, 55, 0.55)";
+      for (const b of birds) {
+        b.x += b.vx * dt;
+        if (b.x > WORLD_W + 40) b.x = -40;
+        if (b.x < -40) b.x = WORLD_W + 40;
+        b.phase += dt * b.sineFreq;
+        const bx = b.x - cam.x * 0.55;
+        const by = b.y + Math.sin(b.phase) * b.sineAmp;
+        if (bx < -20 || bx > W + 20) continue;
+        const flap = Math.sin(b.phase * 4) * 0.35 + 0.7;
+        const s = b.size;
+        ctx.beginPath();
+        ctx.moveTo(bx - s * 1.6, by);
+        ctx.quadraticCurveTo(bx - s * 0.4, by - s * flap, bx, by);
+        ctx.quadraticCurveTo(bx + s * 0.4, by - s * flap, bx + s * 1.6, by);
+        ctx.quadraticCurveTo(bx + s * 0.4, by + s * 0.15, bx, by + s * 0.1);
+        ctx.quadraticCurveTo(bx - s * 0.4, by + s * 0.15, bx - s * 1.6, by);
+        ctx.closePath();
+        ctx.fill();
+      }
+
 
       // ----- Water with depth bands -----
       const waterGrad = ctx.createLinearGradient(0, WATER_Y, 0, H);
