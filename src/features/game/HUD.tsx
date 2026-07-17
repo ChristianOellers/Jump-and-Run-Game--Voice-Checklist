@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Settings2, History, RefreshCw } from "lucide-react";
 import { useGameStore, onPop, type FloatingPop } from "./useGameStore";
+import { shrineStage } from "./GameCanvas";
 import { WorldPopover } from "./WorldPopover";
 import { ActivityPanel } from "@/features/activity/ActivityPanel";
 import { SettingsPanel } from "@/features/settings/SettingsPanel";
@@ -84,6 +85,12 @@ export function HUD() {
           <div className="flex items-baseline gap-3 font-display text-sm text-primary-foreground">
             <Counter label="SEED" value={seeds} light />
             <Counter label="TREE" value={treeGrowth} light />
+            <span className="flex items-baseline gap-1">
+              <span className="text-[0.6rem] uppercase tracking-widest text-primary-foreground/70">
+                STAGE
+              </span>
+              <span className="tabular-nums">{shrineStage(treeGrowth) + 1}/5</span>
+            </span>
           </div>
         </div>
       </div>
