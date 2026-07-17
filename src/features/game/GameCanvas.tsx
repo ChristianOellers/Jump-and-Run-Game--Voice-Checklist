@@ -476,6 +476,38 @@ export function GameCanvas() {
       };
     });
 
+    // Birds — a few rare silhouettes drifting behind gameplay, above the mountains.
+    const birdRng = mulberry32(levelSeed ^ 0xb1d5);
+    const birdCount = 3 + Math.floor(birdRng() * 4); // 3..6
+    const birds: Bird[] = Array.from({ length: birdCount }, () => ({
+      x: birdRng() * WORLD_W,
+      y: 180 + birdRng() * 140, // below clouds (~30-190), above platform band
+      vx: (birdRng() > 0.5 ? 1 : -1) * (18 + birdRng() * 22),
+      phase: birdRng() * Math.PI * 2,
+      sineAmp: 4 + birdRng() * 6,
+      sineFreq: 0.8 + birdRng() * 0.8,
+      size: 4 + birdRng() * 3,
+    }));
+
+    // Rain — decorative only, 25% of worlds; heavy variant doubles density.
+    const rainCount = level.hasRain ? (level.rainHeavy ? 300 : 120) : 0;
+    const rainRng = mulberry32(levelSeed ^ 0xra1n);
+    const initRainDrops = () =>
+      Array.from({ length: rainCount }, () => ({
+        x: rainRng() * window.innerWidth,
+        y: rainRng() * window.innerHeight,
+        vy: (level.rainHeavy ? 900 : 550) + rainRng() * 200,
+        vx: (level.rainHeavy ? -60 : -30) + rainRng() * 20,
+        len: (level.rainHeavy ? 14 : 9) + rainRng() * 6,
+      }));
+    let rainDrops: RainDrop[] = initRainDrops();
+    // Refresh spawn range when the viewport resizes so drops fill the screen.
+    const rainResize = () => {
+      rainDrops = initRainDrops();
+    };
+    window.addEventListener("resize", rainResize);
+
+
     const spawnCandidates = level.platforms
       .map((p, i) => ({ p, i }))
       .filter(({ p, i }) => !p.isShrine && i !== 0 && i !== level.platforms.length - 1);
