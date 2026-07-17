@@ -1045,13 +1045,50 @@ export function GameCanvas() {
       const growthNow = useGameStore.getState().treeGrowth;
       const greenness = Math.max(0, Math.min(1, (growthNow - 70) / 200));
 
+      // Grass spread — starts at stage 3 (growth >= 40) from the shrine platform.
+      const stageNow = shrineStage(growthNow);
+      if (stageNow >= 3) {
+        const shrineIdx = level.platforms.findIndex((p) => p.isShrine);
+        if (shrineIdx >= 0 && grassSpread[shrineIdx] === 0) grassSpread[shrineIdx] = 0.02;
+        if (now >= grassNextSpread) {
+          // Prefer a neighbor of an already-grassed platform; fallback to any empty.
+          const candidates: number[] = [];
+          for (let i = 0; i < grassSpread.length; i++) {
+            if (grassSpread[i] > 0) continue;
+            if (grassSpread[i - 1] > 0 || grassSpread[i + 1] > 0) candidates.push(i);
+          }
+          const pool = candidates.length
+            ? candidates
+            : grassSpread.map((v, i) => (v === 0 ? i : -1)).filter((i) => i >= 0);
+          if (pool.length > 0) {
+            grassSpread[pool[Math.floor(Math.random() * pool.length)]] = 0.02;
+          }
+          grassNextSpread = now + 2800 + Math.random() * 1600;
+        }
+        // Continuous growth of already-seeded platforms.
+        for (let i = 0; i < grassSpread.length; i++) {
+          if (grassSpread[i] > 0 && grassSpread[i] < 1) {
+            grassSpread[i] = Math.min(1, grassSpread[i] + dt * 0.08);
+          }
+        }
+      }
+
+      // Soil palette variants for platform diversity.
+      const SOIL: { front: string; shade: string; top: string }[] = [
+        { front: C.platFront, shade: C.platShade, top: C.platTop },
+        { front: "#b48a5a", shade: "#8f6a3a", top: "#efdcae" }, // warm
+        { front: "#8a6642", shade: "#6b4a2a", top: "#d1b98a" }, // darker
+      ];
+
       // Platforms + foliage
-      for (const p of level.platforms) {
+      for (let pi = 0; pi < level.platforms.length; pi++) {
+        const p = level.platforms[pi];
         const px = p.x - cam.x;
         if (px + p.w < -40 || px > W + 40) continue;
 
         // Bob offset (visual only — collision stays at p.y) and platform tilt.
-        const bobY = p.bobAmp ? Math.sin(now / 1400 + p.bobPhase) * p.bobAmp : 0;
+        // Slower ease so it feels like a lazy swell.
+        const bobY = p.bobAmp ? Math.sin(now / 1800 + p.bobPhase) * p.bobAmp : 0;
         const tilt = (p.tiltDeg * Math.PI) / 180;
 
         ctx.save();
@@ -1063,16 +1100,21 @@ export function GameCanvas() {
           ctx.translate(-cx, -cy);
         }
 
-        // Front face w/ subtle gradient — lerps toward mossy earth as world greens
-        const front = lerpColor(C.platFront, "#6b7a3d", greenness * 0.55);
-        const shade = lerpColor(C.platShade, "#4a5a28", greenness * 0.6);
-        const pf = ctx.createLinearGradient(0, p.y, 0, p.y + p.h);
+        // Extend the drawn front face all the way to the water for visual
+        // consistency — every island appears rooted, never floating in air.
+        const drawH = Math.max(p.h, WATER_Y - p.y + 30);
+
+        // Front face w/ subtle gradient — soil variant then lerp toward mossy.
+        const soil = SOIL[p.soilVariant];
+        const front = lerpColor(soil.front, "#6b7a3d", greenness * 0.55);
+        const shade = lerpColor(soil.shade, "#4a5a28", greenness * 0.6);
+        const pf = ctx.createLinearGradient(0, p.y, 0, p.y + drawH);
         pf.addColorStop(0, front);
         pf.addColorStop(1, shade);
         ctx.fillStyle = pf;
-        ctx.fillRect(px, p.y, p.w, p.h);
+        ctx.fillRect(px, p.y, p.w, drawH);
         // Top face — sandy → mossy green
-        ctx.fillStyle = lerpColor(C.platTop, "#7fb56b", greenness);
+        ctx.fillStyle = lerpColor(soil.top, "#7fb56b", greenness);
         ctx.fillRect(px, p.y, p.w, 8);
         // Rocky top bumps (decorative — collision surface stays at p.y)
         if (p.rocky && p.bumps) {
@@ -1101,6 +1143,18 @@ export function GameCanvas() {
             ctx.fillRect(px + mx, p.y + 8, 4, drop);
           }
         }
+
+        // Preview grass tufts from tree stage 3 onward — grows across the top.
+        const g = grassSpread[pi];
+        if (g > 0) {
+          const tuftCount = Math.max(2, Math.floor((p.w / 22) * g));
+          for (let ti = 0; ti < tuftCount; ti++) {
+            const gx = px + 8 + ((ti + 0.5) * (p.w - 16)) / tuftCount;
+            const wob = Math.sin(now / 800 + ti * 1.3 + p.bobPhase) * 0.6;
+            drawGrassTuft(ctx, gx + wob, p.y, 5 + Math.min(4, g * 5), (ti + pi) * 0.37);
+          }
+        }
+
         for (const b of p.bushes) {
           const wob = b.wiggle ? Math.sin(now / 700 + b.phase) * b.wiggle : 0;
           drawBush(ctx, px + b.x + wob, p.y, b.size, b.hue);
