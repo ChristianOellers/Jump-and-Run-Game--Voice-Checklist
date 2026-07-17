@@ -45,6 +45,7 @@ export const useGameStore = create<State>((set, get) => ({
   ...DEFAULTS,
   hydrated: false,
   activeZone: null,
+  dismissedZone: null,
   hydrate: () => {
     if (get().hydrated) return;
     const saved = storage.get<Persisted | null>(KEY, null);
