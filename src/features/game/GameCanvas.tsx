@@ -44,6 +44,8 @@ interface Platform {
   bushes: Bush[];
   extras: Extra[];
   isShrine?: boolean;
+  rocky?: boolean;
+  bumps?: { x: number; h: number }[];
 }
 interface Fish {
   x: number;
