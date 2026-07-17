@@ -754,14 +754,6 @@ export function GameCanvas() {
           sun.drainAcc -= whole;
           const have = useGameStore.getState().seeds;
           if (have > 0) {
-            const take = Math.min(have, whole);
-      if (inSunReach) {
-        sun.drainAcc += dt;
-        if (sun.drainAcc >= 1) {
-          const whole = Math.floor(sun.drainAcc);
-          sun.drainAcc -= whole;
-          const have = useGameStore.getState().seeds;
-          if (have > 0) {
             // -3 seeds per second under the ray.
             const take = Math.min(have, whole * 3);
             spendSeeds(take);
@@ -771,6 +763,7 @@ export function GameCanvas() {
       } else {
         sun.drainAcc = 0;
       }
+
 
 
       let active: ZoneId = null;
