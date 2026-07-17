@@ -479,12 +479,12 @@ export function GameCanvas() {
       };
     });
 
-    // Birds — a few rare silhouettes drifting behind gameplay, above the mountains.
+    // Birds — screen-space sky layer, independent of camera parallax.
     const birdRng = mulberry32(levelSeed ^ 0xb1d5);
     const birdCount = 3 + Math.floor(birdRng() * 4); // 3..6
     const birds: Bird[] = Array.from({ length: birdCount }, () => ({
-      x: birdRng() * WORLD_W,
-      y: 180 + birdRng() * 140, // below clouds (~30-190), above platform band
+      x: birdRng() * (window.innerWidth + 200) - 100,
+      y: 180 + birdRng() * 140, // below clouds, above hills
       vx: (birdRng() > 0.5 ? 1 : -1) * (18 + birdRng() * 22),
       phase: birdRng() * Math.PI * 2,
       sineAmp: 4 + birdRng() * 6,
