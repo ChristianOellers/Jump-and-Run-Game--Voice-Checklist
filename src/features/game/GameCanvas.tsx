@@ -1089,7 +1089,7 @@ export function GameCanvas() {
 
         // Bob offset (visual only — collision stays at p.y) and platform tilt.
         // Slower ease so it feels like a lazy swell.
-        const bobY = p.bobAmp ? Math.sin(now / 1800 + p.bobPhase) * p.bobAmp : 0;
+        const bobY = p.bobAmp ? Math.sin((now / 1000) * Math.PI + p.bobPhase) * p.bobAmp : 0;
         const tilt = (p.tiltDeg * Math.PI) / 180;
 
         ctx.save();
