@@ -309,9 +309,19 @@ export function GameCanvas() {
 
     const level = generateLevel(levelSeed);
     const fishes = makeFishes(mulberry32(levelSeed ^ 0x1234));
+    const scheme = PALETTES[levelSeed % PALETTES.length];
+    // Apply UI accent tint so the chrome shifts with the daylight scheme
+    document.documentElement.style.setProperty("--primary", scheme.uiPrimary);
+    document.documentElement.style.setProperty("--accent", scheme.uiAccent);
     const clouds = Array.from({ length: 10 }, (_, i) => {
       const r = mulberry32(levelSeed ^ (i * 999));
-      return { x: r() * WORLD_W, y: 30 + r() * 160, w: 80 + r() * 140, h: 14 + r() * 14 };
+      return {
+        x: r() * WORLD_W,
+        y: 30 + r() * 160,
+        w: 80 + r() * 140,
+        h: 14 + r() * 14,
+        vx: 8 + r() * 12,
+      };
     });
     const ripples: Ripple[] = [];
     const motes: Mote[] = Array.from({ length: 40 }, () => {
@@ -336,6 +346,10 @@ export function GameCanvas() {
       lastStepX: 0,
       distAccum: 0,
       stepTimer: 0,
+      jumpsUsed: 0,
+      dashCooldown: 0,
+      lastLeftTap: -999,
+      lastRightTap: -999,
     };
     player.lastStepX = player.x;
 
