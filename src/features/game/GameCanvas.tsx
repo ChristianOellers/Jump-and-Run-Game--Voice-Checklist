@@ -658,15 +658,15 @@ export function GameCanvas() {
       }
 
       // ---- Render ----
-      // Sky gradient
+      // Sky gradient (daylight scheme)
       const g = ctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, C.skyTop);
-      g.addColorStop(0.6, "#d8e8ee");
-      g.addColorStop(1, C.skyBot);
+      g.addColorStop(0, scheme.skyTop);
+      g.addColorStop(0.6, scheme.skyMid);
+      g.addColorStop(1, scheme.skyBot);
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
 
-      // Sun — multi-stop radial shader + soft god-ray halo
+      // Sun — multi-stop radial shader + soft god-ray halo (scheme colored)
       const sunScreenX = sun.x - cam.x * 0.1;
       const sunScreenY = sun.y;
       const halo = ctx.createRadialGradient(
@@ -677,10 +677,10 @@ export function GameCanvas() {
         sunScreenY,
         320,
       );
-      halo.addColorStop(0, `rgba(255, 250, 210, ${0.85 * sun.intensity})`);
-      halo.addColorStop(0.15, `rgba(255, 234, 160, ${0.55 * sun.intensity})`);
-      halo.addColorStop(0.4, `rgba(247, 210, 130, ${0.22 * sun.intensity})`);
-      halo.addColorStop(0.75, `rgba(247, 200, 120, ${0.08 * sun.intensity})`);
+      halo.addColorStop(0, scheme.sunHaloA);
+      halo.addColorStop(0.15, scheme.sunHaloB);
+      halo.addColorStop(0.4, scheme.sunHaloC);
+      halo.addColorStop(0.75, "rgba(247, 200, 120, 0.08)");
       halo.addColorStop(1, "rgba(247, 200, 120, 0)");
       ctx.fillStyle = halo;
       ctx.fillRect(0, 0, W, H);
@@ -689,19 +689,20 @@ export function GameCanvas() {
       ctx.translate(sunScreenX, sunScreenY);
       ctx.rotate(Math.PI / 4);
       const core = ctx.createLinearGradient(-20, -20, 20, 20);
-      core.addColorStop(0, "#fff5c7");
-      core.addColorStop(1, "#f7c96a");
+      core.addColorStop(0, scheme.sunCoreA);
+      core.addColorStop(1, scheme.sunCoreB);
       ctx.fillStyle = core;
       const s = 22 + sun.intensity * 4;
       ctx.fillRect(-s / 2, -s / 2, s, s);
       ctx.restore();
 
-      // Parallax clouds
+      // Parallax clouds — drift infinitely; wrap when off-world
       ctx.fillStyle = C.cloud;
       for (const c of clouds) {
+        c.x += c.vx * dt;
+        if (c.x > WORLD_W + 200) c.x = -200;
         const sx = c.x - cam.x * 0.15;
-        const wrap = ((sx % (WORLD_W + 200)) + WORLD_W + 200) % (WORLD_W + 200);
-        drawCloud(ctx, wrap - 200, c.y, c.w, c.h);
+        drawCloud(ctx, sx, c.y, c.w, c.h);
       }
 
       // Distant hills
