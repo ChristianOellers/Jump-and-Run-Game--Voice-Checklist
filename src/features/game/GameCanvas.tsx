@@ -20,11 +20,15 @@ interface Tree {
   shade: number;
   kind: "pine" | "round" | "birch";
   hue: number;
+  wiggle: number; // 0 = still, >0 = amplitude in px
+  phase: number;
 }
 interface Bush {
   x: number;
   size: number;
   hue: number;
+  wiggle: number;
+  phase: number;
 }
 interface Extra {
   kind: "tree" | "bush" | "grass" | "mushroom";
@@ -44,6 +48,8 @@ interface Platform {
   bushes: Bush[];
   extras: Extra[];
   isShrine?: boolean;
+  rocky?: boolean;
+  bumps?: { x: number; h: number }[];
 }
 interface Fish {
   x: number;
@@ -101,9 +107,13 @@ function generateLevel(seed: number): { platforms: Platform[]; zones: Zone[] } {
   let x = platforms[0].x + platforms[0].w;
   let y = GROUND_Y;
 
+  // Reachability budget: JUMP_V=-640, GRAVITY=1800 → apex ~113px, airtime ~0.71s,
+  // horizontal reach ~200px at MOVE_MAX=280. Keep gaps/rises inside a safe margin.
   while (x < WORLD_W - 260) {
-    const gap = 70 + rnd() * 90;
-    const dy = (rnd() - 0.5) * 140;
+    const gap = 45 + rnd() * 85; // 45..130
+    const rise = rnd() * 75; // up to 75 up
+    const fall = rnd() * 110; // up to 110 down
+    const dy = rnd() < 0.5 ? -rise : fall;
     y = Math.max(300, Math.min(560, y + dy));
     const w = 90 + rnd() * 100;
     platforms.push(makePlatform(x + gap, y, w, rnd));
@@ -151,12 +161,16 @@ function makePlatform(x: number, y: number, w: number, rnd: () => number): Platf
     shade: rnd(),
     kind: kinds[Math.floor(rnd() * kinds.length)],
     hue: rnd(),
+    wiggle: rnd() < 0.4 ? 1.2 + rnd() * 1.8 : 0,
+    phase: rnd() * Math.PI * 2,
   }));
   const bushCount = Math.floor(rnd() * 3); // 0..2
   const bushes: Bush[] = Array.from({ length: bushCount }, () => ({
     x: 8 + rnd() * (w - 16),
     size: 6 + rnd() * 8,
     hue: rnd(),
+    wiggle: rnd() < 0.5 ? 0.8 + rnd() * 1.4 : 0,
+    phase: rnd() * Math.PI * 2,
   }));
 
   // Pre-generate a lush "greening" layer that reveals as the shrine tree matures.
@@ -206,7 +220,15 @@ function makePlatform(x: number, y: number, w: number, rnd: () => number): Platf
     });
   }
 
-  return { x, y, w, h: 220, trees, bushes, extras };
+  const rocky = rnd() < 0.35;
+  const bumps = rocky
+    ? Array.from({ length: 3 + Math.floor(rnd() * 4) }, () => ({
+        x: rnd() * w,
+        h: 4 + rnd() * 9,
+      }))
+    : undefined;
+
+  return { x, y, w, h: 220, trees, bushes, extras, rocky, bumps };
 }
 
 /* ----- Fishes ----- */
@@ -258,6 +280,78 @@ const LEAF_PALETTES = [
 ];
 const BUSH_PALETTE = ["#7fb56b", "#6ea28a", "#a8b76b", "#8fa676"];
 
+/* ----- Daylight schemes: morning, day, sunset. Chosen from levelSeed. ----- */
+interface Scheme {
+  name: "morning" | "day" | "sunset";
+  skyTop: string;
+  skyMid: string;
+  skyBot: string;
+  sunCoreA: string;
+  sunCoreB: string;
+  sunHaloA: string;
+  sunHaloB: string;
+  sunHaloC: string;
+  tintR: number;
+  tintG: number;
+  tintB: number;
+  tintAlpha: number;
+  uiPrimary: string; // hsl triple for --primary
+  uiAccent: string;
+}
+const PALETTES: Scheme[] = [
+  {
+    name: "morning",
+    skyTop: "#fde3c8",
+    skyMid: "#f6d9d0",
+    skyBot: "#cfe5e6",
+    sunCoreA: "#fff2d2",
+    sunCoreB: "#ffb27a",
+    sunHaloA: "rgba(255,220,190,0.85)",
+    sunHaloB: "rgba(255,190,150,0.55)",
+    sunHaloC: "rgba(255,170,120,0.22)",
+    tintR: 255,
+    tintG: 224,
+    tintB: 200,
+    tintAlpha: 0.16,
+    uiPrimary: "24 78% 58%",
+    uiAccent: "34 60% 88%",
+  },
+  {
+    name: "day",
+    skyTop: "#e6f0f5",
+    skyMid: "#d8e8ee",
+    skyBot: "#c9e0ea",
+    sunCoreA: "#fff5c7",
+    sunCoreB: "#f7c96a",
+    sunHaloA: "rgba(255,250,210,0.85)",
+    sunHaloB: "rgba(255,234,160,0.55)",
+    sunHaloC: "rgba(247,210,130,0.22)",
+    tintR: 255,
+    tintG: 245,
+    tintB: 225,
+    tintAlpha: 0.12,
+    uiPrimary: "190 45% 45%",
+    uiAccent: "50 40% 88%",
+  },
+  {
+    name: "sunset",
+    skyTop: "#ff9d78",
+    skyMid: "#e07a97",
+    skyBot: "#8a6fb0",
+    sunCoreA: "#ffd9a8",
+    sunCoreB: "#ff6a4a",
+    sunHaloA: "rgba(255,180,150,0.85)",
+    sunHaloB: "rgba(255,130,110,0.55)",
+    sunHaloC: "rgba(200,90,120,0.24)",
+    tintR: 255,
+    tintG: 190,
+    tintB: 180,
+    tintAlpha: 0.2,
+    uiPrimary: "340 65% 58%",
+    uiAccent: "20 55% 85%",
+  },
+];
+
 export function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const levelSeed = useGameStore((s) => s.levelSeed);
@@ -287,9 +381,19 @@ export function GameCanvas() {
 
     const level = generateLevel(levelSeed);
     const fishes = makeFishes(mulberry32(levelSeed ^ 0x1234));
+    const scheme = PALETTES[levelSeed % PALETTES.length];
+    // Apply UI accent tint so the chrome shifts with the daylight scheme
+    document.documentElement.style.setProperty("--primary", scheme.uiPrimary);
+    document.documentElement.style.setProperty("--accent", scheme.uiAccent);
     const clouds = Array.from({ length: 10 }, (_, i) => {
       const r = mulberry32(levelSeed ^ (i * 999));
-      return { x: r() * WORLD_W, y: 30 + r() * 160, w: 80 + r() * 140, h: 14 + r() * 14 };
+      return {
+        x: r() * WORLD_W,
+        y: 30 + r() * 160,
+        w: 80 + r() * 140,
+        h: 14 + r() * 14,
+        vx: 8 + r() * 12,
+      };
     });
     const ripples: Ripple[] = [];
     const motes: Mote[] = Array.from({ length: 40 }, () => {
@@ -314,6 +418,10 @@ export function GameCanvas() {
       lastStepX: 0,
       distAccum: 0,
       stepTimer: 0,
+      jumpsUsed: 0,
+      dashCooldown: 0,
+      lastLeftTap: -999,
+      lastRightTap: -999,
     };
     player.lastStepX = player.x;
 
@@ -323,6 +431,7 @@ export function GameCanvas() {
     let signRects: SignRect[] = [];
 
     const keys = new Set<string>();
+    const justPressed = new Set<string>();
     const keyDown = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
@@ -338,6 +447,7 @@ export function GameCanvas() {
       ) {
         e.preventDefault();
       }
+      if (!keys.has(code)) justPressed.add(code);
       keys.add(code);
     };
     const keyUp = (e: KeyboardEvent) => {
@@ -373,7 +483,35 @@ export function GameCanvas() {
 
       const left = keys.has("ArrowLeft") || keys.has("KeyA");
       const right = keys.has("ArrowRight") || keys.has("KeyD");
-      const jump = keys.has("Space") || keys.has("ArrowUp") || keys.has("KeyW");
+      const jumpDown = keys.has("Space") || keys.has("ArrowUp") || keys.has("KeyW");
+      const jumpPressed =
+        justPressed.has("Space") || justPressed.has("ArrowUp") || justPressed.has("KeyW");
+      const leftPressed = justPressed.has("ArrowLeft") || justPressed.has("KeyA");
+      const rightPressed = justPressed.has("ArrowRight") || justPressed.has("KeyD");
+
+      // Double-tap dash detection (5s cooldown)
+      player.dashCooldown = Math.max(0, player.dashCooldown - dt);
+      const DASH_WINDOW = 0.28;
+      if (leftPressed) {
+        if (player.dashCooldown === 0 && now / 1000 - player.lastLeftTap < DASH_WINDOW) {
+          player.vx = -MOVE_MAX * 2.3;
+          player.dashCooldown = 5;
+          emitPop("DASH", playerScreen.x, playerScreen.y - 30, "#c05a3a");
+          player.lastLeftTap = -999;
+        } else {
+          player.lastLeftTap = now / 1000;
+        }
+      }
+      if (rightPressed) {
+        if (player.dashCooldown === 0 && now / 1000 - player.lastRightTap < DASH_WINDOW) {
+          player.vx = MOVE_MAX * 2.3;
+          player.dashCooldown = 5;
+          emitPop("DASH", playerScreen.x, playerScreen.y - 30, "#c05a3a");
+          player.lastRightTap = -999;
+        } else {
+          player.lastRightTap = now / 1000;
+        }
+      }
 
       if (left) player.vx -= MOVE_ACCEL * dt;
       if (right) player.vx += MOVE_ACCEL * dt;
@@ -381,15 +519,28 @@ export function GameCanvas() {
         const s = Math.sign(player.vx);
         player.vx -= s * Math.min(Math.abs(player.vx), FRICTION * dt);
       }
-      player.vx = Math.max(-MOVE_MAX, Math.min(MOVE_MAX, player.vx));
+      // Allow dash velocity above normal cap; smoothly clamp back.
+      const cap = Math.max(MOVE_MAX, Math.abs(player.vx) - FRICTION * dt * 0.6);
+      player.vx = Math.max(-cap, Math.min(cap, player.vx));
 
       player.vy += GRAVITY * dt;
 
-      if (jump && (player.grounded || player.coyote > 0)) {
-        player.vy = JUMP_V;
-        player.grounded = false;
-        player.coyote = 0;
+      // Double jump: first jump from ground/coyote, second in-air
+      if (jumpPressed) {
+        if (player.grounded || player.coyote > 0) {
+          player.vy = JUMP_V;
+          player.grounded = false;
+          player.coyote = 0;
+          player.jumpsUsed = 1;
+        } else if (player.jumpsUsed < 2) {
+          // Soft second jump — reset upward, achieves ~2x apex height
+          player.vy = JUMP_V;
+          player.jumpsUsed = 2;
+          emitPop("JUMP", playerScreen.x, playerScreen.y - 24, "#4d8f5a");
+        }
       }
+      // Variable-height: releasing jump early softens vertical
+      if (!jumpDown && player.vy < -200) player.vy *= 0.9;
 
       const prevY = player.y;
       const prevX = player.x;
@@ -412,8 +563,10 @@ export function GameCanvas() {
           }
         }
       }
-      if (player.grounded) player.coyote = 0.08;
-      else player.coyote = Math.max(0, player.coyote - dt);
+      if (player.grounded) {
+        player.coyote = 0.08;
+        player.jumpsUsed = 0;
+      } else player.coyote = Math.max(0, player.coyote - dt);
 
       if (player.x < 10) {
         player.x = 10;
@@ -505,15 +658,15 @@ export function GameCanvas() {
       }
 
       // ---- Render ----
-      // Sky gradient
+      // Sky gradient (daylight scheme)
       const g = ctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, C.skyTop);
-      g.addColorStop(0.6, "#d8e8ee");
-      g.addColorStop(1, C.skyBot);
+      g.addColorStop(0, scheme.skyTop);
+      g.addColorStop(0.6, scheme.skyMid);
+      g.addColorStop(1, scheme.skyBot);
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
 
-      // Sun — multi-stop radial shader + soft god-ray halo
+      // Sun — multi-stop radial shader + soft god-ray halo (scheme colored)
       const sunScreenX = sun.x - cam.x * 0.1;
       const sunScreenY = sun.y;
       const halo = ctx.createRadialGradient(
@@ -524,10 +677,10 @@ export function GameCanvas() {
         sunScreenY,
         320,
       );
-      halo.addColorStop(0, `rgba(255, 250, 210, ${0.85 * sun.intensity})`);
-      halo.addColorStop(0.15, `rgba(255, 234, 160, ${0.55 * sun.intensity})`);
-      halo.addColorStop(0.4, `rgba(247, 210, 130, ${0.22 * sun.intensity})`);
-      halo.addColorStop(0.75, `rgba(247, 200, 120, ${0.08 * sun.intensity})`);
+      halo.addColorStop(0, scheme.sunHaloA);
+      halo.addColorStop(0.15, scheme.sunHaloB);
+      halo.addColorStop(0.4, scheme.sunHaloC);
+      halo.addColorStop(0.75, "rgba(247, 200, 120, 0.08)");
       halo.addColorStop(1, "rgba(247, 200, 120, 0)");
       ctx.fillStyle = halo;
       ctx.fillRect(0, 0, W, H);
@@ -536,19 +689,20 @@ export function GameCanvas() {
       ctx.translate(sunScreenX, sunScreenY);
       ctx.rotate(Math.PI / 4);
       const core = ctx.createLinearGradient(-20, -20, 20, 20);
-      core.addColorStop(0, "#fff5c7");
-      core.addColorStop(1, "#f7c96a");
+      core.addColorStop(0, scheme.sunCoreA);
+      core.addColorStop(1, scheme.sunCoreB);
       ctx.fillStyle = core;
       const s = 22 + sun.intensity * 4;
       ctx.fillRect(-s / 2, -s / 2, s, s);
       ctx.restore();
 
-      // Parallax clouds
+      // Parallax clouds — drift infinitely; wrap when off-world
       ctx.fillStyle = C.cloud;
       for (const c of clouds) {
+        c.x += c.vx * dt;
+        if (c.x > WORLD_W + 200) c.x = -200;
         const sx = c.x - cam.x * 0.15;
-        const wrap = ((sx % (WORLD_W + 200)) + WORLD_W + 200) % (WORLD_W + 200);
-        drawCloud(ctx, wrap - 200, c.y, c.w, c.h);
+        drawCloud(ctx, sx, c.y, c.w, c.h);
       }
 
       // Distant hills
@@ -643,6 +797,27 @@ export function GameCanvas() {
         // Top face — sandy → mossy green
         ctx.fillStyle = lerpColor(C.platTop, "#7fb56b", greenness);
         ctx.fillRect(px, p.y, p.w, 8);
+        // Rocky top bumps (decorative — collision surface stays at p.y)
+        if (p.rocky && p.bumps) {
+          ctx.fillStyle = lerpColor("#8a7a5a", "#5c7248", greenness * 0.7);
+          for (const b of p.bumps) {
+            const bx = px + b.x;
+            const bw = 10 + b.h * 1.4;
+            ctx.beginPath();
+            ctx.moveTo(bx - bw / 2, p.y + 4);
+            ctx.lineTo(bx - bw / 3, p.y - b.h + 2);
+            ctx.lineTo(bx, p.y - b.h);
+            ctx.lineTo(bx + bw / 4, p.y - b.h + 3);
+            ctx.lineTo(bx + bw / 2, p.y + 2);
+            ctx.closePath();
+            ctx.fill();
+          }
+          // dark speckle
+          ctx.fillStyle = "rgba(0,0,0,0.12)";
+          for (const b of p.bumps) {
+            ctx.fillRect(px + b.x - 2, p.y - b.h * 0.4, 2, 1);
+          }
+        }
         // Moss overhang once greenness > 0.3
         if (greenness > 0.3) {
           ctx.fillStyle = `rgba(90, 140, 70, ${(greenness - 0.3) * 0.9})`;
@@ -651,12 +826,14 @@ export function GameCanvas() {
             ctx.fillRect(px + mx, p.y + 8, 4, drop);
           }
         }
-        // Original bushes + trees
+        // Original bushes + trees (with per-plant wind wiggle)
         for (const b of p.bushes) {
-          drawBush(ctx, px + b.x, p.y, b.size, b.hue);
+          const wob = b.wiggle ? Math.sin(now / 700 + b.phase) * b.wiggle : 0;
+          drawBush(ctx, px + b.x + wob, p.y, b.size, b.hue);
         }
         for (const t of p.trees) {
-          drawTree(ctx, px + t.x, p.y, t);
+          const wob = t.wiggle ? Math.sin(now / 900 + t.phase) * t.wiggle : 0;
+          drawTree(ctx, px + t.x, p.y, t, wob);
         }
         // Extras revealed by greenness (skip shrine platform)
         if (!p.isShrine) {
@@ -677,7 +854,9 @@ export function GameCanvas() {
                 shade: ex.hue,
                 kind: ex.treeKind!,
                 hue: ex.hue,
-              });
+                wiggle: 0,
+                phase: 0,
+              }, 0);
             ctx.restore();
           }
         }
@@ -758,12 +937,10 @@ export function GameCanvas() {
         ctx.fill();
       }
 
-      // ----- Foreground light shader: warm/cool tint from sun intensity -----
+      // ----- Foreground light shader: scheme tint × sun intensity -----
       ctx.globalCompositeOperation = "multiply";
-      const tintR = 255;
-      const tintG = 240 + (sun.intensity - 0.75) * 40;
-      const tintB = 220 + (sun.intensity - 0.75) * -60;
-      ctx.fillStyle = `rgba(${tintR | 0},${tintG | 0},${tintB | 0},0.14)`;
+      const intMod = 0.6 + sun.intensity * 0.5;
+      ctx.fillStyle = `rgba(${scheme.tintR},${scheme.tintG},${scheme.tintB},${scheme.tintAlpha * intMod})`;
       ctx.fillRect(0, 0, W, H);
       ctx.globalCompositeOperation = "source-over";
 
@@ -781,6 +958,7 @@ export function GameCanvas() {
       ctx.fillStyle = vg;
       ctx.fillRect(0, 0, W, H);
 
+      justPressed.clear();
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -828,7 +1006,13 @@ function drawHills(
   ctx.closePath();
   ctx.fill();
 }
-function drawTree(ctx: CanvasRenderingContext2D, x: number, groundY: number, t: Tree) {
+function drawTree(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  groundY: number,
+  t: Tree,
+  canopyOffset = 0,
+) {
   const palette = LEAF_PALETTES[Math.floor(t.hue * LEAF_PALETTES.length) % LEAF_PALETTES.length];
   const trunkH = t.size * 1.2;
   if (t.kind === "birch") {
@@ -842,6 +1026,8 @@ function drawTree(ctx: CanvasRenderingContext2D, x: number, groundY: number, t: 
     ctx.fillStyle = C.treeTrunk;
     ctx.fillRect(x - 3, groundY - trunkH, 6, trunkH);
   }
+  // Canopy sways: shift x by canopyOffset only for the leaves
+  x += canopyOffset;
 
   if (t.kind === "pine") {
     // stacked triangles

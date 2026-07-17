@@ -35,7 +35,7 @@ export function WorldPopover({ open, side, title, children, className, onClose }
     >
       <div
         className={cn(
-          "relative rounded-xl border-[2px] border-foreground bg-card/80 p-4 shadow-[6px_6px_0_0_var(--color-foreground)] backdrop-blur-md",
+          "relative rounded-xl border-[2px] border-foreground bg-card/70 p-4 shadow-[6px_6px_0_0_var(--color-foreground)] backdrop-blur-md",
           className,
         )}
       >
