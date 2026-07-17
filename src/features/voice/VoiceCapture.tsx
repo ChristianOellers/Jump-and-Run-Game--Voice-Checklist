@@ -66,47 +66,46 @@ export function VoiceCapture() {
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg">Voice update</CardTitle>
+    <Card className="border-border/70 shadow-none">
+      <CardHeader className="pb-2">
+        <CardTitle className="font-serif text-xl font-medium">Voice update</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
+      <CardContent className="space-y-5">
+        <div className="flex flex-col items-center gap-3 py-2">
           {canUseVoice ? (
-            <Button
+            <button
               type="button"
-              variant={speech.listening ? "destructive" : "default"}
+              data-mic-button="true"
               onClick={() => (speech.listening ? speech.stop() : speech.start())}
               aria-pressed={speech.listening}
+              aria-label={speech.listening ? "Stop recording" : "Start recording"}
+              className={cn(
+                "relative inline-flex h-20 w-20 items-center justify-center rounded-full border transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                speech.listening
+                  ? "mic-pulse border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground hover:border-primary hover:text-primary",
+              )}
             >
               {speech.listening ? (
-                <>
-                  <MicOff className="mr-2 h-4 w-4" /> Stop
-                </>
+                <MicOff className="h-7 w-7 relative" />
               ) : (
-                <>
-                  <Mic className="mr-2 h-4 w-4" /> Record
-                </>
+                <Mic className="h-7 w-7 relative" />
               )}
-            </Button>
+            </button>
           ) : (
-            <span className="text-xs text-muted-foreground">
+            <div className="rounded-full border border-dashed border-border px-4 py-3 text-center text-xs text-muted-foreground">
               {!settings.voiceEnabled
-                ? "Voice disabled in settings — use the text field below."
-                : "Speech recognition unavailable in this browser — type instead."}
-            </span>
+                ? "Voice disabled in settings — type below."
+                : "Speech unavailable in this browser — type below."}
+            </div>
           )}
-          {speech.listening && (
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs text-destructive",
-              )}
-              aria-live="polite"
-            >
-              <span className="h-2 w-2 animate-pulse rounded-full bg-destructive" />
-              Listening…
-            </span>
-          )}
+          <p
+            className="text-xs uppercase tracking-[0.18em] text-muted-foreground"
+            aria-live="polite"
+          >
+            {speech.listening ? "Listening…" : canUseVoice ? "Tap to speak" : "Type your update"}
+          </p>
         </div>
 
         {speech.error && (
@@ -121,10 +120,11 @@ export function VoiceCapture() {
           placeholder='e.g. "I finished the logo and started on the homepage."'
           rows={3}
           aria-label="Progress transcript"
+          className="font-serif italic text-base leading-relaxed"
         />
 
         <div className="flex justify-end">
-          <Button onClick={submit} disabled={analyzing}>
+          <Button onClick={submit} disabled={analyzing} className="rounded-full">
             {analyzing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Analyzing
