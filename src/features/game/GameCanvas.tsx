@@ -491,7 +491,7 @@ export function GameCanvas() {
 
     // Rain — decorative only, 25% of worlds; heavy variant doubles density.
     const rainCount = level.hasRain ? (level.rainHeavy ? 300 : 120) : 0;
-    const rainRng = mulberry32(levelSeed ^ 0xra1n);
+    const rainRng = mulberry32(levelSeed ^ 0xa1b2);
     const initRainDrops = () =>
       Array.from({ length: rainCount }, () => ({
         x: rainRng() * window.innerWidth,
