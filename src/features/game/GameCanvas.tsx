@@ -50,6 +50,9 @@ interface Platform {
   isShrine?: boolean;
   rocky?: boolean;
   bumps?: { x: number; h: number }[];
+  tiltDeg: number; // -3..3, 0 for most and for special platforms
+  bobAmp: number; // 0 for most, small for a few
+  bobPhase: number;
 }
 interface Fish {
   x: number;
@@ -59,6 +62,22 @@ interface Fish {
   size: number;
   kind: "oval" | "long" | "round";
   color: string;
+}
+interface Bird {
+  x: number;
+  y: number;
+  vx: number;
+  phase: number;
+  sineAmp: number;
+  sineFreq: number;
+  size: number;
+}
+interface RainDrop {
+  x: number;
+  y: number;
+  vy: number;
+  vx: number;
+  len: number;
 }
 interface Ripple {
   x: number;
@@ -87,6 +106,7 @@ interface SignRect {
   y2: number;
 }
 
+
 const WORLD_W = 4200;
 const GROUND_Y = 520;
 const WATER_Y = 620;
@@ -99,7 +119,14 @@ const PLAYER_R = 12;
 const STEP_INTERVAL = 3; // seconds — reward tick cadence
 
 /* ----- Level generation ----- */
-function generateLevel(seed: number): { platforms: Platform[]; zones: Zone[] } {
+interface Level {
+  platforms: Platform[];
+  zones: Zone[];
+  mountainStyle: "soft" | "spiky";
+  hasRain: boolean;
+  rainHeavy: boolean;
+}
+function generateLevel(seed: number): Level {
   const rnd = mulberry32(seed);
   const platforms: Platform[] = [];
 
@@ -139,7 +166,24 @@ function generateLevel(seed: number): { platforms: Platform[]; zones: Zone[] } {
     bushes: [],
     extras: [],
     isShrine: true,
+    tiltDeg: 0,
+    bobAmp: 0,
   };
+
+  // Strip tilt from voice/checklist end platforms so signposts stay upright.
+  platforms[0].tiltDeg = 0;
+  platforms[platforms.length - 1].tiltDeg = 0;
+
+  // Assign a gentle vertical bob to 1-2 non-special platforms.
+  const bobCount = 1 + Math.floor(rnd() * 2);
+  const eligible = platforms
+    .map((p, i) => ({ p, i }))
+    .filter(({ p, i }) => !p.isShrine && i !== 0 && i !== platforms.length - 1);
+  for (let k = 0; k < bobCount && eligible.length > 0; k++) {
+    const pick = eligible.splice(Math.floor(rnd() * eligible.length), 1)[0];
+    pick.p.bobAmp = 2 + rnd() * 3; // 2..5px
+    pick.p.bobPhase = rnd() * Math.PI * 2;
+  }
 
   const first = platforms[0];
   const last = platforms[platforms.length - 1];
@@ -149,8 +193,14 @@ function generateLevel(seed: number): { platforms: Platform[]; zones: Zone[] } {
     { id: "checklist", x: last.x + last.w / 2, y: last.y },
     { id: "shrine", x: shrine.x + shrine.w / 2, y: shrine.y },
   ];
-  return { platforms, zones };
+
+  const mountainStyle: "soft" | "spiky" = rnd() < 0.5 ? "soft" : "spiky";
+  const hasRain = rnd() < 0.25;
+  const rainHeavy = hasRain && rnd() < 0.5;
+
+  return { platforms, zones, mountainStyle, hasRain, rainHeavy };
 }
+
 
 function makePlatform(x: number, y: number, w: number, rnd: () => number): Platform {
   const treeCount = 1 + Math.floor(rnd() * 4); // 1..4
@@ -161,7 +211,7 @@ function makePlatform(x: number, y: number, w: number, rnd: () => number): Platf
     shade: rnd(),
     kind: kinds[Math.floor(rnd() * kinds.length)],
     hue: rnd(),
-    wiggle: rnd() < 0.4 ? 1.2 + rnd() * 1.8 : 0,
+    wiggle: rnd() < 0.7 ? 2 + rnd() * 3 : 0,
     phase: rnd() * Math.PI * 2,
   }));
   const bushCount = Math.floor(rnd() * 3); // 0..2
@@ -169,9 +219,10 @@ function makePlatform(x: number, y: number, w: number, rnd: () => number): Platf
     x: 8 + rnd() * (w - 16),
     size: 6 + rnd() * 8,
     hue: rnd(),
-    wiggle: rnd() < 0.5 ? 0.8 + rnd() * 1.4 : 0,
+    wiggle: rnd() < 0.6 ? 1.2 + rnd() * 2 : 0,
     phase: rnd() * Math.PI * 2,
   }));
+
 
   // Pre-generate a lush "greening" layer that reveals as the shrine tree matures.
   // Each entry has a threshold in 0..1; drawn only when greenness >= threshold.
@@ -228,8 +279,25 @@ function makePlatform(x: number, y: number, w: number, rnd: () => number): Platf
       }))
     : undefined;
 
-  return { x, y, w, h: 220, trees, bushes, extras, rocky, bumps };
+  // Cosmetic tilt (~20% of platforms) and gentle bob (~1-2 per world; assigned later).
+  const tiltDeg = rnd() < 0.2 ? (rnd() < 0.5 ? -1 : 1) * (1 + rnd() * 2) : 0;
+
+  return {
+    x,
+    y,
+    w,
+    h: 220,
+    trees,
+    bushes,
+    extras,
+    rocky,
+    bumps,
+    tiltDeg,
+    bobAmp: 0,
+    bobPhase: rnd() * Math.PI * 2,
+  };
 }
+
 
 /* ----- Fishes ----- */
 function makeFishes(rnd: () => number): Fish[] {
@@ -407,6 +475,38 @@ export function GameCanvas() {
         alpha: 0.15 + r() * 0.35,
       };
     });
+
+    // Birds — a few rare silhouettes drifting behind gameplay, above the mountains.
+    const birdRng = mulberry32(levelSeed ^ 0xb1d5);
+    const birdCount = 3 + Math.floor(birdRng() * 4); // 3..6
+    const birds: Bird[] = Array.from({ length: birdCount }, () => ({
+      x: birdRng() * WORLD_W,
+      y: 180 + birdRng() * 140, // below clouds (~30-190), above platform band
+      vx: (birdRng() > 0.5 ? 1 : -1) * (18 + birdRng() * 22),
+      phase: birdRng() * Math.PI * 2,
+      sineAmp: 4 + birdRng() * 6,
+      sineFreq: 0.8 + birdRng() * 0.8,
+      size: 4 + birdRng() * 3,
+    }));
+
+    // Rain — decorative only, 25% of worlds; heavy variant doubles density.
+    const rainCount = level.hasRain ? (level.rainHeavy ? 300 : 120) : 0;
+    const rainRng = mulberry32(levelSeed ^ 0xa1b2);
+    const initRainDrops = () =>
+      Array.from({ length: rainCount }, () => ({
+        x: rainRng() * window.innerWidth,
+        y: rainRng() * window.innerHeight,
+        vy: (level.rainHeavy ? 900 : 550) + rainRng() * 200,
+        vx: (level.rainHeavy ? -60 : -30) + rainRng() * 20,
+        len: (level.rainHeavy ? 14 : 9) + rainRng() * 6,
+      }));
+    let rainDrops: RainDrop[] = initRainDrops();
+    // Refresh spawn range when the viewport resizes so drops fill the screen.
+    const rainResize = () => {
+      rainDrops = initRainDrops();
+    };
+    window.addEventListener("resize", rainResize);
+
 
     const spawnCandidates = level.platforms
       .map((p, i) => ({ p, i }))
@@ -812,9 +912,32 @@ export function GameCanvas() {
 
       // Distant hills
       ctx.fillStyle = C.hillFar;
-      drawHills(ctx, W, H, cam.x * 0.25, 60, GROUND_Y - 40);
+      drawHills(ctx, W, H, cam.x * 0.25, 60, GROUND_Y - 40, level.mountainStyle);
       ctx.fillStyle = C.hillMid;
-      drawHills(ctx, W, H, cam.x * 0.45, 40, GROUND_Y);
+      drawHills(ctx, W, H, cam.x * 0.45, 40, GROUND_Y, level.mountainStyle);
+
+      // Birds — behind gameplay layer, above the mountains. Follow fish-style drift.
+      ctx.fillStyle = "rgba(40, 40, 55, 0.55)";
+      for (const b of birds) {
+        b.x += b.vx * dt;
+        if (b.x > WORLD_W + 40) b.x = -40;
+        if (b.x < -40) b.x = WORLD_W + 40;
+        b.phase += dt * b.sineFreq;
+        const bx = b.x - cam.x * 0.55;
+        const by = b.y + Math.sin(b.phase) * b.sineAmp;
+        if (bx < -20 || bx > W + 20) continue;
+        const flap = Math.sin(b.phase * 4) * 0.35 + 0.7;
+        const s = b.size;
+        ctx.beginPath();
+        ctx.moveTo(bx - s * 1.6, by);
+        ctx.quadraticCurveTo(bx - s * 0.4, by - s * flap, bx, by);
+        ctx.quadraticCurveTo(bx + s * 0.4, by - s * flap, bx + s * 1.6, by);
+        ctx.quadraticCurveTo(bx + s * 0.4, by + s * 0.15, bx, by + s * 0.1);
+        ctx.quadraticCurveTo(bx - s * 0.4, by + s * 0.15, bx - s * 1.6, by);
+        ctx.closePath();
+        ctx.fill();
+      }
+
 
       // ----- Water with depth bands -----
       const waterGrad = ctx.createLinearGradient(0, WATER_Y, 0, H);
@@ -891,6 +1014,20 @@ export function GameCanvas() {
       for (const p of level.platforms) {
         const px = p.x - cam.x;
         if (px + p.w < -40 || px > W + 40) continue;
+
+        // Bob offset (visual only — collision stays at p.y) and platform tilt.
+        const bobY = p.bobAmp ? Math.sin(now / 1400 + p.bobPhase) * p.bobAmp : 0;
+        const tilt = (p.tiltDeg * Math.PI) / 180;
+
+        ctx.save();
+        if (tilt !== 0 || bobY !== 0) {
+          const cx = px + p.w / 2;
+          const cy = p.y;
+          ctx.translate(cx, cy + bobY);
+          if (tilt !== 0) ctx.rotate(tilt);
+          ctx.translate(-cx, -cy);
+        }
+
         // Front face w/ subtle gradient — lerps toward mossy earth as world greens
         const front = lerpColor(C.platFront, "#6b7a3d", greenness * 0.55);
         const shade = lerpColor(C.platShade, "#4a5a28", greenness * 0.6);
@@ -917,13 +1054,11 @@ export function GameCanvas() {
             ctx.closePath();
             ctx.fill();
           }
-          // dark speckle
           ctx.fillStyle = "rgba(0,0,0,0.12)";
           for (const b of p.bumps) {
             ctx.fillRect(px + b.x - 2, p.y - b.h * 0.4, 2, 1);
           }
         }
-        // Moss overhang once greenness > 0.3
         if (greenness > 0.3) {
           ctx.fillStyle = `rgba(90, 140, 70, ${(greenness - 0.3) * 0.9})`;
           for (let mx = 0; mx < p.w; mx += 6) {
@@ -931,7 +1066,6 @@ export function GameCanvas() {
             ctx.fillRect(px + mx, p.y + 8, 4, drop);
           }
         }
-        // Original bushes + trees (with per-plant wind wiggle)
         for (const b of p.bushes) {
           const wob = b.wiggle ? Math.sin(now / 700 + b.phase) * b.wiggle : 0;
           drawBush(ctx, px + b.x + wob, p.y, b.size, b.hue);
@@ -940,7 +1074,6 @@ export function GameCanvas() {
           const wob = t.wiggle ? Math.sin(now / 900 + t.phase) * t.wiggle : 0;
           drawTree(ctx, px + t.x, p.y, t, wob);
         }
-        // Extras revealed by greenness (skip shrine platform)
         if (!p.isShrine) {
           for (const ex of p.extras) {
             if (greenness < ex.threshold) continue;
@@ -965,7 +1098,10 @@ export function GameCanvas() {
             ctx.restore();
           }
         }
+
+        ctx.restore();
       }
+
 
       // Shrine — evolving tree with branches
       const shrine = level.zones.find((z) => z.id === "shrine")!;
@@ -1063,6 +1199,27 @@ export function GameCanvas() {
       ctx.fillStyle = vg;
       ctx.fillRect(0, 0, W, H);
 
+      // Rain — decorative overlay, screen-space so it fills the viewport uniformly.
+      if (rainDrops.length > 0) {
+        ctx.strokeStyle = level.rainHeavy
+          ? "rgba(200, 220, 240, 0.55)"
+          : "rgba(200, 220, 240, 0.35)";
+        ctx.lineWidth = level.rainHeavy ? 1.4 : 1;
+        ctx.beginPath();
+        for (const d of rainDrops) {
+          d.x += d.vx * dt;
+          d.y += d.vy * dt;
+          if (d.y > H) {
+            d.y = -10;
+            d.x = Math.random() * (W + 100);
+          }
+          if (d.x < -10) d.x = W + 10;
+          ctx.moveTo(d.x, d.y);
+          ctx.lineTo(d.x + d.vx * 0.012, d.y + d.len);
+        }
+        ctx.stroke();
+      }
+
       justPressed.clear();
       raf = requestAnimationFrame(loop);
     };
@@ -1072,10 +1229,12 @@ export function GameCanvas() {
       running = false;
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
+      window.removeEventListener("resize", rainResize);
       window.removeEventListener("keydown", keyDown);
       window.removeEventListener("keyup", keyUp);
       canvas.removeEventListener("pointerdown", onPointerDown);
     };
+
   }, [levelSeed, setActiveZone, addSteps, growTree, spendSeeds, openZone]);
 
   return (
@@ -1100,17 +1259,31 @@ function drawHills(
   offset: number,
   amp: number,
   baseY: number,
+  style: "soft" | "spiky" = "soft",
 ) {
   ctx.beginPath();
   ctx.moveTo(0, H);
-  for (let x = 0; x <= W; x += 30) {
-    const y = baseY - Math.sin((x + offset) * 0.005) * amp - amp / 2;
-    ctx.lineTo(x, y);
+  if (style === "spiky") {
+    // Zig-zag ridges: triangular peaks with varying heights, seeded by offset.
+    const step = 46;
+    for (let x = 0; x <= W; x += step) {
+      // deterministic pseudo-random peak from offset+x
+      const n = Math.sin((x + offset) * 0.09) * 0.5 + Math.sin((x + offset) * 0.021) * 0.5;
+      const peakH = amp * (0.75 + n * 0.7);
+      ctx.lineTo(x, baseY - peakH);
+      ctx.lineTo(x + step / 2, baseY - amp * 0.15);
+    }
+  } else {
+    for (let x = 0; x <= W; x += 30) {
+      const y = baseY - Math.sin((x + offset) * 0.005) * amp - amp / 2;
+      ctx.lineTo(x, y);
+    }
   }
   ctx.lineTo(W, H);
   ctx.closePath();
   ctx.fill();
 }
+
 function drawTree(
   ctx: CanvasRenderingContext2D,
   x: number,
