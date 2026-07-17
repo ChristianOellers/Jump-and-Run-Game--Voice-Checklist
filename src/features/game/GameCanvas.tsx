@@ -408,9 +408,16 @@ export function GameCanvas() {
       };
     });
 
+    const spawnCandidates = level.platforms
+      .map((p, i) => ({ p, i }))
+      .filter(({ p, i }) => !p.isShrine && i !== 0 && i !== level.platforms.length - 1);
+    const spawnPlat =
+      spawnCandidates.length > 0
+        ? spawnCandidates[Math.floor(Math.random() * spawnCandidates.length)].p
+        : level.platforms[Math.floor(level.platforms.length / 2)];
     const player = {
-      x: level.zones[0].x + 40,
-      y: level.zones[0].y - 40,
+      x: spawnPlat.x + spawnPlat.w / 2,
+      y: spawnPlat.y - 40,
       vx: 0,
       vy: 0,
       grounded: false,
