@@ -617,16 +617,42 @@ export function GameCanvas() {
       const targetCam = Math.max(0, Math.min(WORLD_W - W, player.x - W / 2));
       cam.x += (targetCam - cam.x) * Math.min(1, dt * 6);
 
-      // Sun follows player w/ delay; Y responds to player speed (dips when moving).
+      // Sun: anchored at home; when player is within trigger range, drifts toward
+      // them like a dog on a leash (clamped to home ± SUN_LEASH). Y dips with speed.
       const speedNorm = Math.min(1, Math.abs(player.vx) / MOVE_MAX);
       sun.speedEase += (speedNorm - sun.speedEase) * Math.min(1, dt * 2.5);
-      const sunTargetX = player.x - 120;
-      const baseY = 70 + Math.sin(now / 3200) * 12;
+      const dxHome = player.x - sunHomeX;
+      const followX =
+        Math.abs(dxHome) < SUN_TRIGGER
+          ? sunHomeX + Math.max(-SUN_LEASH, Math.min(SUN_LEASH, dxHome)) * (1 - Math.abs(dxHome) / SUN_TRIGGER * 0.3)
+          : sunHomeX;
+      const baseY = sunHomeY + Math.sin(now / 3200) * 12;
       const sunTargetY = baseY + sun.speedEase * 22;
-      sun.x += (sunTargetX - sun.x) * dt * 0.35;
+      sun.x += (followX - sun.x) * dt * 0.6;
       sun.y += (sunTargetY - sun.y) * dt * 1.2;
       tintPhase += dt * 0.05;
       sun.intensity = 0.75 + Math.sin(tintPhase) * 0.25;
+
+      // Sun rays: when player is within reach of the sun, drain 1 seed/sec.
+      const sunDx = player.x - sun.x;
+      const sunDy = player.y - sun.y;
+      const sunDist = Math.hypot(sunDx, sunDy);
+      const inSunReach = sunDist < SUN_RAY_RADIUS;
+      if (inSunReach) {
+        sun.drainAcc += dt;
+        if (sun.drainAcc >= 1) {
+          const whole = Math.floor(sun.drainAcc);
+          sun.drainAcc -= whole;
+          const have = useGameStore.getState().seeds;
+          if (have > 0) {
+            const take = Math.min(have, whole);
+            spendSeeds(take);
+            emitPop(`-${take} ☀`, playerScreen.x, playerScreen.y - 40, "#d98a3a");
+          }
+        }
+      } else {
+        sun.drainAcc = 0;
+      }
 
       let active: ZoneId = null;
       let bestD = 220;
