@@ -20,11 +20,15 @@ interface Tree {
   shade: number;
   kind: "pine" | "round" | "birch";
   hue: number;
+  wiggle: number; // 0 = still, >0 = amplitude in px
+  phase: number;
 }
 interface Bush {
   x: number;
   size: number;
   hue: number;
+  wiggle: number;
+  phase: number;
 }
 interface Extra {
   kind: "tree" | "bush" | "grass" | "mushroom";
