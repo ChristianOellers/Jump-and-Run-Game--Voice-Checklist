@@ -182,7 +182,7 @@ function generateLevel(seed: number): Level {
     .filter(({ p, i }) => !p.isShrine && i !== 0 && i !== platforms.length - 1);
   for (let k = 0; k < bobCount && eligible.length > 0; k++) {
     const pick = eligible.splice(Math.floor(rnd() * eligible.length), 1)[0];
-    pick.p.bobAmp = 2 + rnd() * 3; // 2..5px
+    pick.p.bobAmp = 6 + rnd() * 5; // 6..11px, more visible wave-push motion
     pick.p.bobPhase = rnd() * Math.PI * 2;
   }
 
