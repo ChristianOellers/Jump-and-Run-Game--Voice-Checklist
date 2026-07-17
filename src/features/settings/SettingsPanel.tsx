@@ -161,6 +161,3 @@ export function SettingsPanel() {
     </Card>
   );
 }
-
-// Wrapper input intentionally unused here; keep import minimal.
-export const _unused = Input;
