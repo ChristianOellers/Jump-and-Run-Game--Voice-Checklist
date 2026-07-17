@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, CircleDashed, Circle, Sparkles, Check, X } from "lucide-react";
+import { CheckCircle2, CircleDashed, Circle, Check, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
