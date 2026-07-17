@@ -433,7 +433,12 @@ export function GameCanvas() {
     player.lastStepX = player.x;
 
     let cam = { x: 0 };
-    const sun = { x: 300, y: 100, intensity: 1, speedEase: 0 };
+    const sunHomeX = WORLD_W * (0.35 + Math.random() * 0.3);
+    const sunHomeY = 90;
+    const SUN_LEASH = 260;
+    const SUN_TRIGGER = 520;
+    const SUN_RAY_RADIUS = 260;
+    const sun = { x: sunHomeX, y: sunHomeY, intensity: 1, speedEase: 0, drainAcc: 0 };
 
     let signRects: SignRect[] = [];
 
@@ -612,16 +617,42 @@ export function GameCanvas() {
       const targetCam = Math.max(0, Math.min(WORLD_W - W, player.x - W / 2));
       cam.x += (targetCam - cam.x) * Math.min(1, dt * 6);
 
-      // Sun follows player w/ delay; Y responds to player speed (dips when moving).
+      // Sun: anchored at home; when player is within trigger range, drifts toward
+      // them like a dog on a leash (clamped to home ± SUN_LEASH). Y dips with speed.
       const speedNorm = Math.min(1, Math.abs(player.vx) / MOVE_MAX);
       sun.speedEase += (speedNorm - sun.speedEase) * Math.min(1, dt * 2.5);
-      const sunTargetX = player.x - 120;
-      const baseY = 70 + Math.sin(now / 3200) * 12;
+      const dxHome = player.x - sunHomeX;
+      const followX =
+        Math.abs(dxHome) < SUN_TRIGGER
+          ? sunHomeX + Math.max(-SUN_LEASH, Math.min(SUN_LEASH, dxHome)) * (1 - Math.abs(dxHome) / SUN_TRIGGER * 0.3)
+          : sunHomeX;
+      const baseY = sunHomeY + Math.sin(now / 3200) * 12;
       const sunTargetY = baseY + sun.speedEase * 22;
-      sun.x += (sunTargetX - sun.x) * dt * 0.35;
+      sun.x += (followX - sun.x) * dt * 0.6;
       sun.y += (sunTargetY - sun.y) * dt * 1.2;
       tintPhase += dt * 0.05;
       sun.intensity = 0.75 + Math.sin(tintPhase) * 0.25;
+
+      // Sun rays: when player is within reach of the sun, drain 1 seed/sec.
+      const sunDx = player.x - sun.x;
+      const sunDy = player.y - sun.y;
+      const sunDist = Math.hypot(sunDx, sunDy);
+      const inSunReach = sunDist < SUN_RAY_RADIUS;
+      if (inSunReach) {
+        sun.drainAcc += dt;
+        if (sun.drainAcc >= 1) {
+          const whole = Math.floor(sun.drainAcc);
+          sun.drainAcc -= whole;
+          const have = useGameStore.getState().seeds;
+          if (have > 0) {
+            const take = Math.min(have, whole);
+            spendSeeds(take);
+            emitPop(`-${take} ☀`, playerScreen.x, playerScreen.y - 40, "#d98a3a");
+          }
+        }
+      } else {
+        sun.drainAcc = 0;
+      }
 
       let active: ZoneId = null;
       let bestD = 220;
@@ -674,7 +705,7 @@ export function GameCanvas() {
       ctx.fillRect(0, 0, W, H);
 
       // Sun — multi-stop radial shader + soft god-ray halo (scheme colored)
-      const sunScreenX = sun.x - cam.x * 0.1;
+      const sunScreenX = sun.x - cam.x;
       const sunScreenY = sun.y;
       const halo = ctx.createRadialGradient(
         sunScreenX,
@@ -702,6 +733,68 @@ export function GameCanvas() {
       const s = 22 + sun.intensity * 4;
       ctx.fillRect(-s / 2, -s / 2, s, s);
       ctx.restore();
+
+      // Sun rays — subtle flashlight on player + random rays when in reach
+      if (inSunReach) {
+        const strength = 1 - sunDist / SUN_RAY_RADIUS; // 0..1
+        const pxScreen = player.x - cam.x;
+        const pyScreen = player.y - 12;
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        // Focused beam sun -> player
+        const beamAng = Math.atan2(pyScreen - sunScreenY, pxScreen - sunScreenX);
+        const beamLen = Math.hypot(pxScreen - sunScreenX, pyScreen - sunScreenY);
+        const beam = ctx.createLinearGradient(sunScreenX, sunScreenY, pxScreen, pyScreen);
+        beam.addColorStop(0, `rgba(255, 236, 180, ${0.28 * strength})`);
+        beam.addColorStop(1, `rgba(255, 236, 180, 0)`);
+        ctx.translate(sunScreenX, sunScreenY);
+        ctx.rotate(beamAng);
+        ctx.fillStyle = beam;
+        ctx.beginPath();
+        ctx.moveTo(0, -6);
+        ctx.lineTo(beamLen, -34 * strength - 8);
+        ctx.lineTo(beamLen, 34 * strength + 8);
+        ctx.lineTo(0, 6);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        // A few random rays fanning outward, biased toward player direction
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.translate(sunScreenX, sunScreenY);
+        const rayCount = 5;
+        for (let i = 0; i < rayCount; i++) {
+          const jitter = Math.sin(now / 400 + i * 1.7) * 0.35;
+          const ang = beamAng + (i - (rayCount - 1) / 2) * 0.18 + jitter * 0.1;
+          const len = beamLen * (0.7 + Math.abs(Math.sin(now / 700 + i)) * 0.5);
+          const rg = ctx.createLinearGradient(0, 0, Math.cos(ang) * len, Math.sin(ang) * len);
+          rg.addColorStop(0, `rgba(255, 240, 200, ${0.14 * strength})`);
+          rg.addColorStop(1, "rgba(255, 240, 200, 0)");
+          ctx.fillStyle = rg;
+          ctx.save();
+          ctx.rotate(ang);
+          ctx.beginPath();
+          ctx.moveTo(0, -3);
+          ctx.lineTo(len, -10);
+          ctx.lineTo(len, 10);
+          ctx.lineTo(0, 3);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+        ctx.restore();
+
+        // Halo on the player
+        const pHalo = ctx.createRadialGradient(pxScreen, pyScreen, 4, pxScreen, pyScreen, 60);
+        pHalo.addColorStop(0, `rgba(255, 240, 200, ${0.35 * strength})`);
+        pHalo.addColorStop(1, "rgba(255, 240, 200, 0)");
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.fillStyle = pHalo;
+        ctx.fillRect(pxScreen - 60, pyScreen - 60, 120, 120);
+        ctx.restore();
+      }
 
       // Parallax clouds — drift infinitely; wrap when off-world
       ctx.fillStyle = C.cloud;
