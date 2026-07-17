@@ -24,15 +24,16 @@ export function WorldPopover({ open, side, title, children, className, onClose }
   return (
     <div
       className={cn(
-        "pointer-events-none fixed top-20 z-30 w-[min(92vw,380px)] transition-all duration-300 ease-out",
+        "pointer-events-none fixed top-20 z-30 w-[min(92vw,380px)] opacity-75 transition-all duration-300 ease-out",
         position,
         origin,
         open
-          ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
+          ? "pointer-events-auto translate-y-0 scale-100 opacity-75"
           : "translate-y-2 scale-95 opacity-0",
       )}
       aria-hidden={!open}
     >
+
       <div
         className={cn(
           "relative rounded-xl border-[2px] border-foreground bg-card/70 p-4 shadow-[6px_6px_0_0_var(--color-foreground)] backdrop-blur-md",
