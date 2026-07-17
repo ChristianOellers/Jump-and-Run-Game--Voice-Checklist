@@ -1564,7 +1564,7 @@ function drawMushroom(
 }
 
 /* ---- Shrine tree with branches, 5 evolutionary stages ---- */
-function shrineStage(growth: number) {
+export function shrineStage(growth: number) {
   if (growth < 8) return 0;
   if (growth < 20) return 1;
   if (growth < 40) return 2;
