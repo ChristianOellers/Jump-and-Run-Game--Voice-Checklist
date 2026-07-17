@@ -797,6 +797,27 @@ export function GameCanvas() {
         // Top face — sandy → mossy green
         ctx.fillStyle = lerpColor(C.platTop, "#7fb56b", greenness);
         ctx.fillRect(px, p.y, p.w, 8);
+        // Rocky top bumps (decorative — collision surface stays at p.y)
+        if (p.rocky && p.bumps) {
+          ctx.fillStyle = lerpColor("#8a7a5a", "#5c7248", greenness * 0.7);
+          for (const b of p.bumps) {
+            const bx = px + b.x;
+            const bw = 10 + b.h * 1.4;
+            ctx.beginPath();
+            ctx.moveTo(bx - bw / 2, p.y + 4);
+            ctx.lineTo(bx - bw / 3, p.y - b.h + 2);
+            ctx.lineTo(bx, p.y - b.h);
+            ctx.lineTo(bx + bw / 4, p.y - b.h + 3);
+            ctx.lineTo(bx + bw / 2, p.y + 2);
+            ctx.closePath();
+            ctx.fill();
+          }
+          // dark speckle
+          ctx.fillStyle = "rgba(0,0,0,0.12)";
+          for (const b of p.bumps) {
+            ctx.fillRect(px + b.x - 2, p.y - b.h * 0.4, 2, 1);
+          }
+        }
         // Moss overhang once greenness > 0.3
         if (greenness > 0.3) {
           ctx.fillStyle = `rgba(90, 140, 70, ${(greenness - 0.3) * 0.9})`;
@@ -805,12 +826,14 @@ export function GameCanvas() {
             ctx.fillRect(px + mx, p.y + 8, 4, drop);
           }
         }
-        // Original bushes + trees
+        // Original bushes + trees (with per-plant wind wiggle)
         for (const b of p.bushes) {
-          drawBush(ctx, px + b.x, p.y, b.size, b.hue);
+          const wob = b.wiggle ? Math.sin(now / 700 + b.phase) * b.wiggle : 0;
+          drawBush(ctx, px + b.x + wob, p.y, b.size, b.hue);
         }
         for (const t of p.trees) {
-          drawTree(ctx, px + t.x, p.y, t);
+          const wob = t.wiggle ? Math.sin(now / 900 + t.phase) * t.wiggle : 0;
+          drawTree(ctx, px + t.x, p.y, t, wob);
         }
         // Extras revealed by greenness (skip shrine platform)
         if (!p.isShrine) {
