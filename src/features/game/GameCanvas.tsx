@@ -175,14 +175,15 @@ function generateLevel(seed: number): Level {
   platforms[0].tiltDeg = 0;
   platforms[platforms.length - 1].tiltDeg = 0;
 
-  // Assign a gentle vertical bob to 1-2 non-special platforms.
-  const bobCount = 1 + Math.floor(rnd() * 2);
+  // Assign a gentle vertical bob to ~10-20% of non-special platforms.
   const eligible = platforms
     .map((p, i) => ({ p, i }))
     .filter(({ p, i }) => !p.isShrine && i !== 0 && i !== platforms.length - 1);
+  const bobRatio = 0.1 + rnd() * 0.1; // 10-20%
+  const bobCount = Math.max(1, Math.round(eligible.length * bobRatio));
   for (let k = 0; k < bobCount && eligible.length > 0; k++) {
     const pick = eligible.splice(Math.floor(rnd() * eligible.length), 1)[0];
-    pick.p.bobAmp = 6 + rnd() * 5; // 6..11px, more visible wave-push motion
+    pick.p.bobAmp = 10 + rnd() * 10; // 10..20px
     pick.p.bobPhase = rnd() * Math.PI * 2;
   }
 
