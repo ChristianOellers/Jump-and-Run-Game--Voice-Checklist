@@ -960,6 +960,7 @@ export function GameCanvas() {
       ctx.fillStyle = vg;
       ctx.fillRect(0, 0, W, H);
 
+      justPressed.clear();
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
