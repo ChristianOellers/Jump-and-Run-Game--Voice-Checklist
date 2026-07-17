@@ -152,10 +152,10 @@ export function SuggestionsPanel() {
   };
 
   return (
-    <Card>
+    <Card className="border-border/70 shadow-none">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-lg">Suggestions</CardTitle>
+          <CardTitle className="font-serif text-xl font-medium">Suggestions</CardTitle>
           {lastApply && (
             <Button variant="ghost" size="sm" onClick={undoLast}>
               Undo last
@@ -163,19 +163,21 @@ export function SuggestionsPanel() {
           )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {!batch ? (
           <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            Record or type a progress update, then Analyze to see suggested changes here.
+            Speak or type an update, then Analyze to see suggested changes here.
           </p>
         ) : (
           <>
-            <div className="rounded-lg bg-muted/40 p-3 text-sm">
-              <p className="mb-1 flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                <Sparkles className="h-3 w-3" /> Transcript
+            <blockquote className="border-l-2 border-primary/50 pl-4">
+              <p className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                You said
               </p>
-              <p className="text-foreground">{batch.transcript}</p>
-            </div>
+              <p className="font-serif mt-1 text-base italic leading-relaxed text-foreground">
+                &ldquo;{batch.transcript}&rdquo;
+              </p>
+            </blockquote>
 
             {actionable.length === 0 ? (
               <p className="text-sm text-muted-foreground">
@@ -190,7 +192,7 @@ export function SuggestionsPanel() {
                   return (
                     <li
                       key={s.itemId}
-                      className="flex items-start gap-2 rounded-lg border border-border p-3"
+                      className="flex items-start gap-3 rounded-lg border border-border/70 bg-card p-3 transition-colors hover:border-primary/40"
                     >
                       <Checkbox
                         checked={!!selected[s.itemId]}
@@ -203,15 +205,21 @@ export function SuggestionsPanel() {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-sm font-medium">{item.title}</span>
-                          <Badge variant="outline" className={cn("gap-1", meta.className)}>
+                          <Badge variant="outline" className={cn("gap-1 font-normal", meta.className)}>
                             <meta.Icon className="h-3 w-3" />
                             {meta.label}
                           </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {(s.confidence * 100).toFixed(0)}%
-                          </span>
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">{s.reasoning}</p>
+                        <div
+                          className="mt-2 h-1 w-24 overflow-hidden rounded-full bg-muted"
+                          aria-label={`Confidence ${(s.confidence * 100).toFixed(0)} percent`}
+                        >
+                          <div
+                            className="h-full bg-primary/70"
+                            style={{ width: `${Math.round(s.confidence * 100)}%` }}
+                          />
+                        </div>
                       </div>
                     </li>
                   );
@@ -223,7 +231,11 @@ export function SuggestionsPanel() {
               <Button variant="ghost" onClick={clear}>
                 <X className="mr-1 h-4 w-4" /> Dismiss
               </Button>
-              <Button onClick={applySelected} disabled={actionable.length === 0}>
+              <Button
+                onClick={applySelected}
+                disabled={actionable.length === 0}
+                className="rounded-full"
+              >
                 <Check className="mr-1 h-4 w-4" /> Apply selected
               </Button>
             </div>
