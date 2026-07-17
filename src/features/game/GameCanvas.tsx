@@ -991,6 +991,20 @@ export function GameCanvas() {
       for (const p of level.platforms) {
         const px = p.x - cam.x;
         if (px + p.w < -40 || px > W + 40) continue;
+
+        // Bob offset (visual only — collision stays at p.y) and platform tilt.
+        const bobY = p.bobAmp ? Math.sin(now / 1400 + p.bobPhase) * p.bobAmp : 0;
+        const tilt = (p.tiltDeg * Math.PI) / 180;
+
+        ctx.save();
+        if (tilt !== 0 || bobY !== 0) {
+          const cx = px + p.w / 2;
+          const cy = p.y;
+          ctx.translate(cx, cy + bobY);
+          if (tilt !== 0) ctx.rotate(tilt);
+          ctx.translate(-cx, -cy);
+        }
+
         // Front face w/ subtle gradient — lerps toward mossy earth as world greens
         const front = lerpColor(C.platFront, "#6b7a3d", greenness * 0.55);
         const shade = lerpColor(C.platShade, "#4a5a28", greenness * 0.6);
@@ -1017,13 +1031,11 @@ export function GameCanvas() {
             ctx.closePath();
             ctx.fill();
           }
-          // dark speckle
           ctx.fillStyle = "rgba(0,0,0,0.12)";
           for (const b of p.bumps) {
             ctx.fillRect(px + b.x - 2, p.y - b.h * 0.4, 2, 1);
           }
         }
-        // Moss overhang once greenness > 0.3
         if (greenness > 0.3) {
           ctx.fillStyle = `rgba(90, 140, 70, ${(greenness - 0.3) * 0.9})`;
           for (let mx = 0; mx < p.w; mx += 6) {
@@ -1031,7 +1043,6 @@ export function GameCanvas() {
             ctx.fillRect(px + mx, p.y + 8, 4, drop);
           }
         }
-        // Original bushes + trees (with per-plant wind wiggle)
         for (const b of p.bushes) {
           const wob = b.wiggle ? Math.sin(now / 700 + b.phase) * b.wiggle : 0;
           drawBush(ctx, px + b.x + wob, p.y, b.size, b.hue);
@@ -1040,7 +1051,6 @@ export function GameCanvas() {
           const wob = t.wiggle ? Math.sin(now / 900 + t.phase) * t.wiggle : 0;
           drawTree(ctx, px + t.x, p.y, t, wob);
         }
-        // Extras revealed by greenness (skip shrine platform)
         if (!p.isShrine) {
           for (const ex of p.extras) {
             if (greenness < ex.threshold) continue;
@@ -1065,7 +1075,10 @@ export function GameCanvas() {
             ctx.restore();
           }
         }
+
+        ctx.restore();
       }
+
 
       // Shrine — evolving tree with branches
       const shrine = level.zones.find((z) => z.id === "shrine")!;
