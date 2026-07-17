@@ -280,6 +280,78 @@ const LEAF_PALETTES = [
 ];
 const BUSH_PALETTE = ["#7fb56b", "#6ea28a", "#a8b76b", "#8fa676"];
 
+/* ----- Daylight schemes: morning, day, sunset. Chosen from levelSeed. ----- */
+interface Scheme {
+  name: "morning" | "day" | "sunset";
+  skyTop: string;
+  skyMid: string;
+  skyBot: string;
+  sunCoreA: string;
+  sunCoreB: string;
+  sunHaloA: string;
+  sunHaloB: string;
+  sunHaloC: string;
+  tintR: number;
+  tintG: number;
+  tintB: number;
+  tintAlpha: number;
+  uiPrimary: string; // hsl triple for --primary
+  uiAccent: string;
+}
+const PALETTES: Scheme[] = [
+  {
+    name: "morning",
+    skyTop: "#fde3c8",
+    skyMid: "#f6d9d0",
+    skyBot: "#cfe5e6",
+    sunCoreA: "#fff2d2",
+    sunCoreB: "#ffb27a",
+    sunHaloA: "rgba(255,220,190,0.85)",
+    sunHaloB: "rgba(255,190,150,0.55)",
+    sunHaloC: "rgba(255,170,120,0.22)",
+    tintR: 255,
+    tintG: 224,
+    tintB: 200,
+    tintAlpha: 0.16,
+    uiPrimary: "24 78% 58%",
+    uiAccent: "34 60% 88%",
+  },
+  {
+    name: "day",
+    skyTop: "#e6f0f5",
+    skyMid: "#d8e8ee",
+    skyBot: "#c9e0ea",
+    sunCoreA: "#fff5c7",
+    sunCoreB: "#f7c96a",
+    sunHaloA: "rgba(255,250,210,0.85)",
+    sunHaloB: "rgba(255,234,160,0.55)",
+    sunHaloC: "rgba(247,210,130,0.22)",
+    tintR: 255,
+    tintG: 245,
+    tintB: 225,
+    tintAlpha: 0.12,
+    uiPrimary: "190 45% 45%",
+    uiAccent: "50 40% 88%",
+  },
+  {
+    name: "sunset",
+    skyTop: "#ff9d78",
+    skyMid: "#e07a97",
+    skyBot: "#8a6fb0",
+    sunCoreA: "#ffd9a8",
+    sunCoreB: "#ff6a4a",
+    sunHaloA: "rgba(255,180,150,0.85)",
+    sunHaloB: "rgba(255,130,110,0.55)",
+    sunHaloC: "rgba(200,90,120,0.24)",
+    tintR: 255,
+    tintG: 190,
+    tintB: 180,
+    tintAlpha: 0.2,
+    uiPrimary: "340 65% 58%",
+    uiAccent: "20 55% 85%",
+  },
+];
+
 export function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const levelSeed = useGameStore((s) => s.levelSeed);
