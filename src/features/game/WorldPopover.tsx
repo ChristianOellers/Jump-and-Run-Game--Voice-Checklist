@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -7,9 +8,10 @@ interface Props {
   title: string;
   children: ReactNode;
   className?: string;
+  onClose?: () => void;
 }
 
-export function WorldPopover({ open, side, title, children, className }: Props) {
+export function WorldPopover({ open, side, title, children, className, onClose }: Props) {
   const position =
     side === "left"
       ? "left-4 sm:left-8"
@@ -33,7 +35,7 @@ export function WorldPopover({ open, side, title, children, className }: Props) 
     >
       <div
         className={cn(
-          "relative rounded-xl border-[2px] border-foreground bg-card p-4 shadow-[6px_6px_0_0_var(--color-foreground)]",
+          "relative rounded-xl border-[2px] border-foreground bg-card/80 p-4 shadow-[6px_6px_0_0_var(--color-foreground)] backdrop-blur-md",
           className,
         )}
       >
@@ -41,9 +43,20 @@ export function WorldPopover({ open, side, title, children, className }: Props) 
           <h2 className="font-display text-sm uppercase tracking-[0.18em] text-foreground">
             {title}
           </h2>
-          <span className="text-[0.65rem] uppercase tracking-widest text-muted-foreground">
-            {side === "left" ? "◄ walk away to close" : side === "right" ? "walk away to close ►" : "menu"}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:inline text-[0.65rem] uppercase tracking-widest text-muted-foreground">
+              walk away or
+            </span>
+            {onClose && (
+              <button
+                onClick={onClose}
+                aria-label="Close"
+                className="rounded-md border-2 border-foreground/70 bg-background/70 p-1 text-foreground transition hover:bg-foreground hover:text-background"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         </div>
         <div className="max-h-[70vh] overflow-y-auto pr-1">{children}</div>
       </div>

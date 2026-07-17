@@ -45,6 +45,8 @@ function HomePage() {
   const hydrateSettings = useSettingsStore((s) => s.hydrate);
   const hydrateGame = useGameStore((s) => s.hydrate);
   const activeZone = useGameStore((s) => s.activeZone);
+  const dismissedZone = useGameStore((s) => s.dismissedZone);
+  const dismissZone = useGameStore((s) => s.dismissZone);
   const hasSuggestions = useSuggestionsStore((s) => !!s.batch);
 
   useEffect(() => {
@@ -54,20 +56,33 @@ function HomePage() {
     hydrateGame();
   }, [hydrateChecklist, hydrateActivity, hydrateSettings, hydrateGame]);
 
+  const voiceOpen = activeZone === "voice" && dismissedZone !== "voice";
+  const checklistOpen = activeZone === "checklist" && dismissedZone !== "checklist";
+
   return (
     <div className="fixed inset-0 overflow-hidden bg-[#c9e0ea]">
       <GameCanvas />
       <RewardBridge />
       <HUD />
 
-      <WorldPopover open={activeZone === "voice"} side="left" title="Voice Update">
+      <WorldPopover
+        open={voiceOpen}
+        side="left"
+        title="Voice Update"
+        onClose={() => dismissZone("voice")}
+      >
         <div className="space-y-3">
           <VoiceCapture />
           {hasSuggestions && <SuggestionsPanel />}
         </div>
       </WorldPopover>
 
-      <WorldPopover open={activeZone === "checklist"} side="right" title="Checklist">
+      <WorldPopover
+        open={checklistOpen}
+        side="right"
+        title="Checklist"
+        onClose={() => dismissZone("checklist")}
+      >
         <ChecklistPanel />
       </WorldPopover>
 

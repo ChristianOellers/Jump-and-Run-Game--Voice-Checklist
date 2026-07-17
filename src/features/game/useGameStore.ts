@@ -17,6 +17,7 @@ interface Persisted {
 interface State extends Persisted {
   hydrated: boolean;
   activeZone: ZoneId;
+  dismissedZone: ZoneId;
   hydrate: () => void;
   addSteps: (n: number) => void;
   addWords: (n: number) => void;
@@ -24,6 +25,8 @@ interface State extends Persisted {
   spendSeeds: (n: number) => void;
   growTree: (n: number) => void;
   setActiveZone: (z: ZoneId) => void;
+  dismissZone: (z: ZoneId) => void;
+  openZone: (z: ZoneId) => void;
   regenLevel: () => void;
 }
 
@@ -42,6 +45,7 @@ export const useGameStore = create<State>((set, get) => ({
   ...DEFAULTS,
   hydrated: false,
   activeZone: null,
+  dismissedZone: null,
   hydrate: () => {
     if (get().hydrated) return;
     const saved = storage.get<Persisted | null>(KEY, null);
@@ -83,9 +87,15 @@ export const useGameStore = create<State>((set, get) => ({
     set({ treeGrowth });
   },
   setActiveZone: (z) => {
-    if (get().activeZone === z) return;
-    set({ activeZone: z });
+    const cur = get().activeZone;
+    if (cur === z) return;
+    // Clear dismissal when leaving that zone so re-entering re-opens it.
+    const dismissed = get().dismissedZone;
+    const nextDismissed = dismissed && dismissed !== z ? null : dismissed;
+    set({ activeZone: z, dismissedZone: nextDismissed });
   },
+  dismissZone: (z) => set({ dismissedZone: z }),
+  openZone: (z) => set({ dismissedZone: null, activeZone: z }),
   regenLevel: () => {
     const levelSeed = Math.floor(Math.random() * 2 ** 31);
     const next = { ...pick(get()), levelSeed };
