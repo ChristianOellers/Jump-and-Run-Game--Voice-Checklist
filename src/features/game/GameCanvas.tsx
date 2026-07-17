@@ -433,7 +433,12 @@ export function GameCanvas() {
     player.lastStepX = player.x;
 
     let cam = { x: 0 };
-    const sun = { x: 300, y: 100, intensity: 1, speedEase: 0 };
+    const sunHomeX = WORLD_W * (0.35 + Math.random() * 0.3);
+    const sunHomeY = 90;
+    const SUN_LEASH = 260;
+    const SUN_TRIGGER = 520;
+    const SUN_RAY_RADIUS = 260;
+    const sun = { x: sunHomeX, y: sunHomeY, intensity: 1, speedEase: 0, drainAcc: 0 };
 
     let signRects: SignRect[] = [];
 
