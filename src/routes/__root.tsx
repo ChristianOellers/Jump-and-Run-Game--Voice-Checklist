@@ -77,19 +77,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Voice Checklist — talk it through, tick it off" },
+      { title: "Voice Checklist — a tiny world for getting things done" },
       {
         name: "description",
         content:
-          "Speak your progress. Review AI suggestions. Nothing changes without you. A warm, human way to track what you're getting done.",
+          "Run and jump through a pixel world. Speak your progress on the left, tick items off on the right, grow a tree in the middle.",
       },
-      { property: "og:title", content: "Voice Checklist" },
+      { property: "og:title", content: "Voice Checklist — a tiny world for getting things done" },
       {
         property: "og:description",
-        content: "Talk it through, tick it off. A warm, human progress tracker.",
+        content: "Run and jump through a pixel world. Speak your progress on the left, tick items off on the right, grow a tree in the middle.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Voice Checklist — a tiny world for getting things done" },
+      { name: "twitter:description", content: "Run and jump through a pixel world. Speak your progress on the left, tick items off on the right, grow a tree in the middle." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/eNnz5SKBACSezw5MQaIU0RZNoJf2/social-images/social-1784277736295-Screenshot_2026-07-17_at_15.41.34.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/eNnz5SKBACSezw5MQaIU0RZNoJf2/social-images/social-1784277736295-Screenshot_2026-07-17_at_15.41.34.webp" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

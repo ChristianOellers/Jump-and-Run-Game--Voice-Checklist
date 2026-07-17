@@ -27,10 +27,10 @@ export const Route = createFileRoute("/")({
         content:
           "Run and jump through a pixel world. Speak your progress on the left, tick items off on the right, grow a tree in the middle.",
       },
-      { property: "og:title", content: "Voice Checklist — a world for getting things done" },
+      { property: "og:title", content: "Voice Checklist — a tiny world for getting things done" },
       {
         property: "og:description",
-        content: "A tiny side-scrolling world where your progress grows a tree.",
+        content: "Run and jump through a pixel world. Speak your progress on the left, tick items off on the right, grow a tree in the middle.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
