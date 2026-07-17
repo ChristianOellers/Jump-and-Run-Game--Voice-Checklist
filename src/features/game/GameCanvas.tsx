@@ -157,12 +157,16 @@ function makePlatform(x: number, y: number, w: number, rnd: () => number): Platf
     shade: rnd(),
     kind: kinds[Math.floor(rnd() * kinds.length)],
     hue: rnd(),
+    wiggle: rnd() < 0.4 ? 1.2 + rnd() * 1.8 : 0,
+    phase: rnd() * Math.PI * 2,
   }));
   const bushCount = Math.floor(rnd() * 3); // 0..2
   const bushes: Bush[] = Array.from({ length: bushCount }, () => ({
     x: 8 + rnd() * (w - 16),
     size: 6 + rnd() * 8,
     hue: rnd(),
+    wiggle: rnd() < 0.5 ? 0.8 + rnd() * 1.4 : 0,
+    phase: rnd() * Math.PI * 2,
   }));
 
   // Pre-generate a lush "greening" layer that reveals as the shrine tree matures.
