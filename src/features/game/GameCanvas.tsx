@@ -1213,17 +1213,31 @@ function drawHills(
   offset: number,
   amp: number,
   baseY: number,
+  style: "soft" | "spiky" = "soft",
 ) {
   ctx.beginPath();
   ctx.moveTo(0, H);
-  for (let x = 0; x <= W; x += 30) {
-    const y = baseY - Math.sin((x + offset) * 0.005) * amp - amp / 2;
-    ctx.lineTo(x, y);
+  if (style === "spiky") {
+    // Zig-zag ridges: triangular peaks with varying heights, seeded by offset.
+    const step = 46;
+    for (let x = 0; x <= W; x += step) {
+      // deterministic pseudo-random peak from offset+x
+      const n = Math.sin((x + offset) * 0.09) * 0.5 + Math.sin((x + offset) * 0.021) * 0.5;
+      const peakH = amp * (0.75 + n * 0.7);
+      ctx.lineTo(x, baseY - peakH);
+      ctx.lineTo(x + step / 2, baseY - amp * 0.15);
+    }
+  } else {
+    for (let x = 0; x <= W; x += 30) {
+      const y = baseY - Math.sin((x + offset) * 0.005) * amp - amp / 2;
+      ctx.lineTo(x, y);
+    }
   }
   ctx.lineTo(W, H);
   ctx.closePath();
   ctx.fill();
 }
+
 function drawTree(
   ctx: CanvasRenderingContext2D,
   x: number,
