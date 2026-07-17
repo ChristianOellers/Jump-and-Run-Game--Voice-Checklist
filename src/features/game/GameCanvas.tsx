@@ -510,6 +510,23 @@ export function GameCanvas() {
     };
     window.addEventListener("resize", rainResize);
 
+    // Grass spread — seeded from shrine platform once shrine tree reaches stage 3,
+    // then propagates to neighbors every ~3s. Each entry is 0..1 growth level.
+    const grassSpread: number[] = new Array(level.platforms.length).fill(0);
+    let grassNextSpread = 0; // performance.now() timestamp
+
+    // Foreground mist puffs — screen-space, drifting slowly over water/base.
+    const mistRng = mulberry32(levelSeed ^ 0xf065);
+    const mistPuffs = Array.from({ length: 9 }, () => ({
+      x: mistRng() * (window.innerWidth + 200) - 100,
+      y: 0, // recomputed each frame from H
+      yOff: -20 + mistRng() * 40,
+      w: 90 + mistRng() * 120,
+      h: 14 + mistRng() * 10,
+      vx: 6 + mistRng() * 10,
+      alpha: 0.06 + mistRng() * 0.06,
+    }));
+
 
     const spawnCandidates = level.platforms
       .map((p, i) => ({ p, i }))
