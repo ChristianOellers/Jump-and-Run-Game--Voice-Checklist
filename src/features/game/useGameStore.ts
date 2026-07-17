@@ -87,9 +87,15 @@ export const useGameStore = create<State>((set, get) => ({
     set({ treeGrowth });
   },
   setActiveZone: (z) => {
-    if (get().activeZone === z) return;
-    set({ activeZone: z });
+    const cur = get().activeZone;
+    if (cur === z) return;
+    // Clear dismissal when leaving that zone so re-entering re-opens it.
+    const dismissed = get().dismissedZone;
+    const nextDismissed = dismissed && dismissed !== z ? null : dismissed;
+    set({ activeZone: z, dismissedZone: nextDismissed });
   },
+  dismissZone: (z) => set({ dismissedZone: z }),
+  openZone: (z) => set({ dismissedZone: null, activeZone: z }),
   regenLevel: () => {
     const levelSeed = Math.floor(Math.random() * 2 ** 31);
     const next = { ...pick(get()), levelSeed };
