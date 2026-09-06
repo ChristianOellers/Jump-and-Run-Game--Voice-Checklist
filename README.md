@@ -46,7 +46,7 @@ human touch at its core (this is a tech demo, not even a prototype or more).
 
 In case you urgently need it for something.
 
-[![Badge](slop-award.png)](https://codeconut-gamified-voice-checklist.lovable.app)
+![Badge](slop-award.png)
 
 ---
 
