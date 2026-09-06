@@ -1,410 +1,53 @@
-# Voice Checklist - Tech POC
+# Voice Checklist – Jump & Run
 
-# TASK
+[![Jump and Run](teaser.png)](https://codeconut-gamified-voice-checklist.lovable.app)
 
-Build a small production-ready checklist web app.
+Vibe-coding tech demo to explore the web speech API and how far a one-shot AI prompt can go.
+When would a complex application degrade into a buggy mess?
 
-## Goal
+Expect a weirdly over-complicated UI and game experience. Quite some frustration. Maybe a bit fun.
 
-Users speak a progress update into the browser.
-
-Example:
-
-> "I finished the logo and set up the homepage."
-
-The application transcribes the speech, sends it to an LLM, detects completed checklist items, and suggests checklist updates for user confirmation.
+Try it live: [LOVABLE](https://codeconut-gamified-voice-checklist.lovable.app)
 
 ---
 
-# Success Criteria
+## Mechanics
 
-The MVP is complete when:
+- Run around with the character and try to reach the UI interfaces, at the left/ right game field corners.
+- Collected points can be exchanged at the central tree to let it grow.
+- Don't get touched by the sun.
+- Random world generation for visual effect only.
 
-- checklist CRUD works
-
-- drag & drop reordering works
-
-- speech recognition works (with fallback)
-
-- LLM suggestions work (mock mode included)
-
-- user reviews suggestions before applying
-
-- undo last auto-apply
-
-- local persistence survives refresh
-
-- responsive UI
-
-- no runtime errors
+_Tip: The character can double-jump._
 
 ---
 
-# Features
+## Known issues
 
-## Checklist
+Ignored for now:
 
-Each item contains:
-
-- id
-
-- title
-
-- description
-
-- done
-
-- doneAt
-
-- confidence
-
-- source
-
-- order
-
-Support:
-
-- create
-
-- edit
-
-- delete
-
-- reorder
-
-- manual completion
-
-- undo
+- Hit detection is not perfect for moving obstacles
+- Parallax background moves oddly with character
+- Movement is really difficult to control
 
 ---
 
-## Voice Input
+## Disclaimer
 
-Use Web Speech API.
+> [!TIP]
+> 90% AI generated, 5% effort – 5% love
 
-If unavailable:
-
-- manual text input fallback
-
-Display:
-
-- listening state
-
-- transcript
-
-- microphone errors
+Nothing has been adjusted or polished. But it would be cool if it were – with a solid
+human touch at its core (this is a tech demo, not even a prototype or more).
 
 ---
 
-## LLM
+## Fan goodies
 
-Create a single abstraction layer.
+In case you urgently need it for something.
 
-```
-
-Speech
-
-    ↓
-
-Speech Service
-
-    ↓
-
-LLM Service
-
-    ↓
-
-Suggestion Engine
-
-```
-
-Support:
-
-- mock mode
-
-- real API mode
-
-Never expose secrets in frontend code.
+[![Badge](slop-award.png)](https://codeconut-gamified-voice-checklist.lovable.app)
 
 ---
 
-## Suggestions
-
-The LLM returns:
-
-- completed
-
-- partially completed
-
-- not mentioned
-
-- confidence
-
-Show:
-
-- transcript
-
-- reasoning
-
-- suggested checklist mapping
-
-Require confirmation before applying unless Auto Apply is enabled.
-
-Low confidence must require confirmation.
-
-Never silently modify checklist items.
-
-Never delete items.
-
----
-
-## Activity Log
-
-Store:
-
-- transcript
-
-- interpreted items
-
-- applied actions
-
-- timestamps
-
----
-
-## Settings
-
-Support:
-
-- language
-
-- theme
-
-- autoApply
-
-- apiMode
-
-- voiceEnabled
-
-Persist locally.
-
----
-
-# Persistence
-
-Store locally using:
-
-- localStorage
-
-Architecture should allow replacing this later with a backend.
-
----
-
-# UI
-
-Sections:
-
-- Checklist
-
-- Voice Capture
-
-- Suggestions
-
-- Activity Log
-
-- Settings
-
-Show:
-
-- completion %
-
-- completed count
-
-- loading states
-
-- empty states
-
-- error states
-
-Responsive.
-
-Keyboard accessible.
-
-Semantic HTML.
-
-Good contrast.
-
----
-
-# Architecture
-
-Use a modern lightweight frontend stack.
-
-Preferred:
-
-- React
-
-- TypeScript
-
-- Vite
-
-Organize code by feature.
-
-Example:
-
-```
-
-components/
-
-services/
-
-hooks/
-
-types/
-
-storage/
-
-utils/
-
-```
-
-Requirements:
-
-- small reusable components
-
-- small functions
-
-- clear naming
-
-- minimal dependencies
-
-- lightweight state management
-
-- easy backend replacement
-
-Avoid unnecessary abstractions.
-
----
-
-# Behavior
-
-Prefer semantic matching over keyword matching.
-
-When uncertain:
-
-- ask user
-
-Never:
-
-- silently apply changes
-
-- remove checklist items
-
-- expose secrets
-
-All state changes must be reversible.
-
----
-
-# Error Handling
-
-Handle:
-
-- microphone denied
-
-- browser unsupported
-
-- empty transcript
-
-- LLM failure
-
-- malformed responses
-
-- storage failures
-
-The application must remain usable.
-
----
-
-# Empty States
-
-Provide sensible UI when:
-
-- no checklist items
-
-- no speech history
-
-- mock mode enabled
-
-- speech unavailable
-
-- API unavailable
-
----
-
-# Constraints
-
-- production-quality code
-
-- pragmatic MVP
-
-- no over-engineering
-
-- clean architecture
-
-- strongly typed
-
-- mobile-first
-
-- responsive
-
-- extensible
-
-- readable
-
-- maintainable
-
----
-
-# Completion Rules
-
-Continue implementing until every acceptance criterion is complete.
-
-If blocked:
-
-- explain why
-
-- propose the smallest solution
-
-- continue remaining work
-
-Do not stop early.
-
-Do not invent APIs.
-
-Use mock implementations where required.
-
-Deliver a working application.
-
-This project was built with [Lovable](https://lovable.dev).
-
-**Live app**: https://codeconut-gamified-voice-checklist.lovable.app
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/684e9502-2ffb-43c5-a1c1-d33b2aa41c87).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
-```
+_Code by Lovable. Slop award by ChatGPT. README by human._
