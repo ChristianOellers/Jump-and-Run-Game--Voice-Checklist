@@ -65,6 +65,15 @@ function HomePage() {
       <RewardBridge />
       <HUD />
 
+      <header className="pointer-events-none absolute left-0 right-0 top-0 z-20 flex justify-center px-6 pt-5">
+        <h1 className="pointer-events-auto rounded-xl border-2 border-[#5a4a3f]/15 bg-[#fffdf7]/85 px-5 py-2.5 text-center font-sans text-lg font-bold tracking-tight text-[#3d322b] shadow-sm backdrop-blur-sm sm:text-xl">
+          Voice Checklist
+          <span className="block text-xs font-medium text-[#6b5d52]/90 sm:text-sm">
+            A voice-controlled, gamified checklist world
+          </span>
+        </h1>
+      </header>
+
       <WorldPopover
         open={voiceOpen}
         side="left"
