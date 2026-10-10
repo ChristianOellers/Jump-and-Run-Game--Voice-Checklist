@@ -1,13 +1,13 @@
 # Voice Checklist – Jump & Run
 
-[![Jump and Run](teaser.png)](https://codeconut-gamified-voice-checklist.lovable.app)
+[![Jump and Run](teaser.png)](https://ccn-gamified-voice-checklist.lovable.app)
 
 Vibe-coding tech demo to explore the web speech API and how far a one-shot AI prompt can go.
 When would a complex application degrade into a buggy mess?
 
 Expect a weirdly over-complicated UI and game experience. Quite some frustration. Maybe a bit fun.
 
-Try it live: [LOVABLE](https://codeconut-gamified-voice-checklist.lovable.app)
+Try it live: [LOVABLE](https://ccn-gamified-voice-checklist.lovable.app)
 
 ---
 
