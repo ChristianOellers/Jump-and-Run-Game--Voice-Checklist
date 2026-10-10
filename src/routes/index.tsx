@@ -65,6 +65,13 @@ function HomePage() {
       <RewardBridge />
       <HUD />
 
+      <header className="sr-only">
+        <h1>
+          Voice Checklist
+          <span className="block">A voice-controlled, gamified checklist world</span>
+        </h1>
+      </header>
+
       <WorldPopover
         open={voiceOpen}
         side="left"
